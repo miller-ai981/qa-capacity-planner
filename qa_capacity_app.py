@@ -268,12 +268,29 @@ st.markdown("""
     /* Column headers in dataframes */
     .stDataFrame th {
         color: white !important;
-        background-color: rgba(102, 126, 234, 0.3) !important;
+        background-color: rgba(102, 126, 234, 0.5) !important;
+        font-weight: 600 !important;
     }
     
-    /* Dataframe cells */
+    /* Dataframe cells - FORCE DARK TEXT */
     .stDataFrame td {
-        color: rgba(255, 255, 255, 0.9) !important;
+        color: #1a202c !important;
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Dataframe container */
+    [data-testid="stDataFrame"] {
+        background: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    /* Table rows */
+    [data-testid="stDataFrame"] tbody tr {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    [data-testid="stDataFrame"] tbody tr:hover {
+        background-color: rgba(240, 242, 246, 1) !important;
     }
     
     /* Alerts */
@@ -1210,12 +1227,9 @@ def main():
         if unassigned_count > 0:
             st.warning(f"⚠️ {unassigned_count} items need QA assignment")
         
-        # Work items table with unassigned highlighting
+        # Work items table - ensure text is visible
         st.dataframe(
-            work_items_df.style.apply(
-                lambda row: ['background-color: rgba(252, 74, 26, 0.2)' if row['Assigned QA'] == 'Unassigned' else '' for _ in row],
-                axis=1
-            ) if unassigned_count > 0 else work_items_df,
+            work_items_df,
             use_container_width=True,
             hide_index=True,
             height=400
