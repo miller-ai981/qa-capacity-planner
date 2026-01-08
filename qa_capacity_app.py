@@ -272,16 +272,38 @@ st.markdown("""
         font-weight: 600 !important;
     }
     
-    /* Dataframe cells - FORCE DARK TEXT */
+    /* Dataframe cells - FORCE DARK TEXT WITH HIGHEST SPECIFICITY */
     .stDataFrame td {
         color: #1a202c !important;
         background-color: rgba(255, 255, 255, 0.95) !important;
         font-weight: 500 !important;
     }
     
+    /* Target the actual text elements inside cells */
+    .stDataFrame td div {
+        color: #1a202c !important;
+    }
+    
+    .stDataFrame td span {
+        color: #1a202c !important;
+    }
+    
+    .stDataFrame td p {
+        color: #1a202c !important;
+    }
+    
     /* Dataframe container */
     [data-testid="stDataFrame"] {
         background: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    /* Table body background */
+    [data-testid="stDataFrame"] table {
+        background-color: white !important;
+    }
+    
+    [data-testid="stDataFrame"] tbody {
+        background-color: white !important;
     }
     
     /* Table rows */
@@ -291,6 +313,33 @@ st.markdown("""
     
     [data-testid="stDataFrame"] tbody tr:hover {
         background-color: rgba(240, 242, 246, 1) !important;
+    }
+    
+    /* Force all text in dataframes to be dark */
+    [data-testid="stDataFrame"] * {
+        color: #1a202c !important;
+    }
+    
+    /* But keep headers white */
+    [data-testid="stDataFrame"] thead * {
+        color: white !important;
+    }
+    
+    /* Make other text white (not in dataframes) */
+    body p:not([data-testid="stDataFrame"] p), 
+    body span:not([data-testid="stDataFrame"] span), 
+    body div:not([data-testid="stDataFrame"] div) {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    /* Headings white */
+    h1, h2, h3, h4, h5, h6 {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    /* Labels white */
+    label:not([data-testid="stDataFrame"] label) {
+        color: rgba(255, 255, 255, 0.95) !important;
     }
     
     /* Alerts */
