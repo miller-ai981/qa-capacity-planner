@@ -65,9 +65,53 @@ st.markdown("""
     }
     
     /* Global text color override - catches all grey text */
-    body, p, span, div, label, h1, h2, h3, h4, h5, h6, li, td, th, a {
-        color: rgba(255, 255, 255, 0.95) !important;
-    }
+    # body, p, span, div, label, h1, h2, h3, h4, h5, h6, li, td, th, a {
+    #     color: rgba(255, 255, 255, 0.95) !important;
+    # }
+            
+    /* =======================
+   SAFE TEXT COLOR RULES
+   ======================= */
+
+/* Default app text (outside tables) */
+.stApp, 
+.stMarkdown, 
+.stText, 
+.stAlert, 
+.stMetric, 
+.stTabs, 
+.stExpander {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+/* =======================
+   DATAFRAME FIX (CRITICAL)
+   ======================= */
+
+[data-testid="stDataFrame"] {
+    background-color: white !important;
+}
+
+[data-testid="stDataFrame"] table {
+    background-color: white !important;
+}
+
+/* Force visible text inside dataframe cells */
+[data-testid="stDataFrame"] td,
+[data-testid="stDataFrame"] td * {
+    color: #1a202c !important;
+    background-color: white !important;
+    font-weight: 500 !important;
+}
+
+/* Headers stay dark-themed */
+[data-testid="stDataFrame"] th,
+[data-testid="stDataFrame"] th * {
+    color: white !important;
+    background-color: rgba(102, 126, 234, 0.6) !important;
+    font-weight: 700 !important;
+}
+
     
     .stApp {
         background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
@@ -326,11 +370,11 @@ st.markdown("""
     }
     
     /* Make other text white (not in dataframes) */
-    body p:not([data-testid="stDataFrame"] p), 
-    body span:not([data-testid="stDataFrame"] span), 
-    body div:not([data-testid="stDataFrame"] div) {
-        color: rgba(255, 255, 255, 0.95) !important;
-    }
+    # body p:not([data-testid="stDataFrame"] p), 
+    # body span:not([data-testid="stDataFrame"] span), 
+    # body div:not([data-testid="stDataFrame"] div) {
+    #     color: rgba(255, 255, 255, 0.95) !important;
+    # }
     
     /* Headings white */
     h1, h2, h3, h4, h5, h6 {
