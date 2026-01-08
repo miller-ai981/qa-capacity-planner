@@ -1048,7 +1048,16 @@ def main():
             AI-Powered Sprint Capacity Management & Risk Analytics
         </p>
     """, unsafe_allow_html=True)
-    
+    st.markdown("""
+<div class="info-box">
+<strong>How to use this tool</strong><br>
+1️⃣ Configure sprint length and daily QA capacity in the sidebar<br>
+2️⃣ Sync sprint work items from Azure DevOps (or use demo data)<br>
+3️⃣ Review the <strong>QA Capacity Table</strong> for risk (🔴 🟡 🟢)<br>
+4️⃣ Resolve overloads <em>before</em> sprint starts
+</div>
+""", unsafe_allow_html=True)
+
     # Sidebar Configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
@@ -1198,33 +1207,43 @@ def main():
         st.divider()
         
         # Beautiful visualizations in a 2x2 grid
-        st.subheader("📊 Visual Analytics")
-        
+        # st.subheader("📊 Visual Analytics")
+        st.subheader("📊 Sprint Risk & Capacity Overview")
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.plotly_chart(create_capacity_chart(capacity_df), use_container_width=True)
-        
+
         with col2:
-            st.plotly_chart(create_utilization_gauge(capacity_df), use_container_width=True)
+           st.plotly_chart(create_risk_summary(capacity_df), use_container_width=True)
+
         
-        col3, col4 = st.columns(2)
+        # col1, col2 = st.columns(2)
         
-        with col3:
-            st.plotly_chart(create_risk_summary(capacity_df), use_container_width=True)
+        # with col1:
+        #     st.plotly_chart(create_capacity_chart(capacity_df), use_container_width=True)
         
-        with col4:
-            st.plotly_chart(create_capacity_heatmap(capacity_df), use_container_width=True)
+        # with col2:
+        #     st.plotly_chart(create_utilization_gauge(capacity_df), use_container_width=True)
         
-        # Additional charts
-        col5, col6 = st.columns(2)
+        # col3, col4 = st.columns(2)
         
-        with col5:
-            st.plotly_chart(create_workload_distribution(work_items_df), use_container_width=True)
+        # with col3:
+        #     st.plotly_chart(create_risk_summary(capacity_df), use_container_width=True)
         
-        with col6:
-            if len(capacity_df) > 0:
-                st.plotly_chart(create_capacity_waterfall(capacity_df), use_container_width=True)
+        # with col4:
+        #     st.plotly_chart(create_capacity_heatmap(capacity_df), use_container_width=True)
+        
+        # # Additional charts
+        # col5, col6 = st.columns(2)
+        
+        # with col5:
+        #     st.plotly_chart(create_workload_distribution(work_items_df), use_container_width=True)
+        
+        # with col6:
+        #     if len(capacity_df) > 0:
+        #         st.plotly_chart(create_capacity_waterfall(capacity_df), use_container_width=True)
         
         # Recommendations (rule-based, not AI)
         st.divider()
