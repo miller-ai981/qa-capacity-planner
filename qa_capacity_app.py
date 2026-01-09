@@ -73,19 +73,9 @@ st.markdown("""
     }
     
     /* Global text color override - catches all grey text */
-/* =========================
-   MAIN CONTENT TEXT (WHITE)
-   ========================= */
- 
-.stApp label, 
-.stApp h1, 
-.stApp h2, 
-.stApp h3, 
-.stApp h4, 
-.stApp h6 {
-    color: rgba(255, 255, 255, 0.95);
-}
-
+    body, p, span, div, label, h1, h2, h3, h4, h5, h6, li, td, th, a {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
     
     .stApp {
         background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
@@ -276,119 +266,79 @@ st.markdown("""
     }
     
     /* Dataframe */
-    # .dataframe {
-    #     background: rgba(255, 255, 255, 0.05);
-    #     backdrop-filter: blur(10px);
-    #     border-radius: 15px;
-    #     border: 1px solid rgba(255, 255, 255, 0.1);
-    # }
+    .dataframe {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
     
-    # /* Column headers in dataframes */
-    # .stDataFrame th {
-    #     color: white !important;
-    #     background-color: rgba(102, 126, 234, 0.5) !important;
-    #     font-weight: 600 !important;
-    # }
+    /* Column headers in dataframes */
+    .stDataFrame th {
+        color: white !important;
+        background-color: rgba(102, 126, 234, 0.5) !important;
+        font-weight: 600 !important;
+    }
     
-    # /* Dataframe cells - FORCE DARK TEXT WITH HIGHEST SPECIFICITY */
-    # .stDataFrame td {
-    #     color: #1a202c !important;
-    #     background-color: rgba(255, 255, 255, 0.95) !important;
-    #     font-weight: 500 !important;
-    # }
+    /* Dataframe cells - FORCE DARK TEXT WITH HIGHEST SPECIFICITY */
+    .stDataFrame td {
+        color: #1a202c !important;
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        font-weight: 500 !important;
+    }
     
-    # /* Target the actual text elements inside cells */
-    # .stDataFrame td div {
-    #     color: #1a202c !important;
-    # }
+    /* Target the actual text elements inside cells */
+    .stDataFrame td div {
+        color: #1a202c !important;
+    }
     
-    # .stDataFrame td span {
-    #     color: #1a202c !important;
-    # }
+    .stDataFrame td span {
+        color: #1a202c !important;
+    }
     
-    # .stDataFrame td p {
-    #     color: #1a202c !important;
-    # }
+    .stDataFrame td p {
+        color: #1a202c !important;
+    }
     
-    # /* Dataframe container */
-    # [data-testid="stDataFrame"] {
-    #     background: rgba(255, 255, 255, 0.95) !important;
-    # }
+    /* Dataframe container */
+    [data-testid="stDataFrame"] {
+        background: rgba(255, 255, 255, 0.95) !important;
+    }
     
-    # /* Table body background */
-    # [data-testid="stDataFrame"] table {
-    #     background-color: white !important;
-    # }
+    /* Table body background */
+    [data-testid="stDataFrame"] table {
+        background-color: white !important;
+    }
     
-    # [data-testid="stDataFrame"] tbody {
-    #     background-color: white !important;
-    # }
+    [data-testid="stDataFrame"] tbody {
+        background-color: white !important;
+    }
     
-    # /* Table rows */
-    # [data-testid="stDataFrame"] tbody tr {
-    #     background-color: rgba(255, 255, 255, 0.95) !important;
-    # }
+    /* Table rows */
+    [data-testid="stDataFrame"] tbody tr {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+    }
     
-    # [data-testid="stDataFrame"] tbody tr:hover {
-    #     background-color: rgba(240, 242, 246, 1) !important;
-    # }
+    [data-testid="stDataFrame"] tbody tr:hover {
+        background-color: rgba(240, 242, 246, 1) !important;
+    }
     
-    # /* Force all text in dataframes to be dark */
-    # [data-testid="stDataFrame"] * {
-    #     color: #1a202c !important;
-    # }
+    /* Force all text in dataframes to be dark */
+    [data-testid="stDataFrame"] * {
+        color: #1a202c !important;
+    }
     
-    # /* But keep headers white */
-    # [data-testid="stDataFrame"] thead * {
-    #     color: white !important;
-    # }
-            
-            /* =========================
-   STREAMLIT DATAFRAME FIX
-   ========================= */
-
-/* Dataframe container */
-[data-testid="stDataFrame"] {
-    background-color: white !important;
-    border-radius: 12px;
-}
-
-/* Column headers */
-[data-testid="stDataFrame"] thead th {
-    background-color: #667eea !important;
-    color: white !important;
-    font-weight: 600 !important;
-}
-
-/* Table cells */
-[data-testid="stDataFrame"] tbody td {
-    background-color: white !important;
-    color: #1a202c !important;  /* DARK TEXT */
-    font-weight: 500 !important;
-}
-
-/* Inner cell text (AG Grid uses nested divs/spans) */
-[data-testid="stDataFrame"] td div,
-[data-testid="stDataFrame"] td span,
-[data-testid="stDataFrame"] td p {
-    color: #1a202c !important;
-}
-
-/* Hover effect */
-[data-testid="stDataFrame"] tbody tr:hover td {
-    background-color: #f0f2f6 !important;
-}
-
-/* Prevent global white text override inside dataframe */
-[data-testid="stDataFrame"] * {
-    text-shadow: none !important;
-}
-
+    /* But keep headers white */
+    [data-testid="stDataFrame"] thead * {
+        color: white !important;
+    }
     
     /* Make other text white (not in dataframes) */
-    body p:not([data-testid="stDataFrame"] p), 
-    body span:not([data-testid="stDataFrame"] span), 
-    body div:not([data-testid="stDataFrame"] div) {
+    .stMarkdown p,
+    .stMarkdown span,
+    .stMarkdown div,
+    .stAlert p,
+    .stAlert span {
         color: rgba(255, 255, 255, 0.95) !important;
     }
     
@@ -720,63 +670,63 @@ def calculate_capacity(qa_members: List[Dict], sprint_days: int, daily_capacity:
 # VISUALIZATION (Simple & Clear)
 # ============================================================================
 
-# def create_capacity_chart(capacity_df: pd.DataFrame):
-#     """Simple bar chart showing capacity breakdown"""
-#     fig = go.Figure()
+def create_capacity_chart(capacity_df: pd.DataFrame):
+    """Simple bar chart showing capacity breakdown"""
+    fig = go.Figure()
     
-#     fig.add_trace(go.Bar(
-#         name='Assigned',
-#         x=capacity_df['QA Name'],
-#         y=capacity_df['Assigned Hours'],
-#         marker_color='#667eea'
-#     ))
+    fig.add_trace(go.Bar(
+        name='Assigned',
+        x=capacity_df['QA Name'],
+        y=capacity_df['Assigned Hours'],
+        marker_color='#667eea'
+    ))
     
-#     fig.add_trace(go.Bar(
-#         name='Remaining',
-#         x=capacity_df['QA Name'],
-#         y=capacity_df['Remaining Hours'],
-#         marker_color='#48bb78'
-#     ))
+    fig.add_trace(go.Bar(
+        name='Remaining',
+        x=capacity_df['QA Name'],
+        y=capacity_df['Remaining Hours'],
+        marker_color='#48bb78'
+    ))
     
-#     fig.update_layout(
-#         title='QA Workload Overview',
-#         xaxis_title='QA Members',
-#         yaxis_title='Hours',
-#         barmode='stack',
-#         plot_bgcolor='rgba(0,0,0,0)',
-#         paper_bgcolor='rgba(0,0,0,0)',
-#         font={'color': 'white'},
-#         height=400
-#     )
+    fig.update_layout(
+        title='QA Workload Overview',
+        xaxis_title='QA Members',
+        yaxis_title='Hours',
+        barmode='stack',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font={'color': 'white'},
+        height=400
+    )
     
-#     return fig
+    return fig
 
-# def create_risk_summary(capacity_df: pd.DataFrame):
-#     """Simple pie chart showing risk distribution"""
-#     risk_counts = capacity_df['Risk Status'].value_counts()
+def create_risk_summary(capacity_df: pd.DataFrame):
+    """Simple pie chart showing risk distribution"""
+    risk_counts = capacity_df['Risk Status'].value_counts()
     
-#     colors = {
-#         '🔴 Overallocated': '#fc4a1a',
-#         '🟡 Tight Buffer': '#f7b733',
-#         '🟢 Healthy': '#48bb78'
-#     }
+    colors = {
+        '🔴 Overallocated': '#fc4a1a',
+        '🟡 Tight Buffer': '#f7b733',
+        '🟢 Healthy': '#48bb78'
+    }
     
-#     fig = go.Figure(data=[go.Pie(
-#         labels=risk_counts.index,
-#         values=risk_counts.values,
-#         marker_colors=[colors.get(label, '#667eea') for label in risk_counts.index],
-#         hole=0.4
-#     )])
+    fig = go.Figure(data=[go.Pie(
+        labels=risk_counts.index,
+        values=risk_counts.values,
+        marker_colors=[colors.get(label, '#667eea') for label in risk_counts.index],
+        hole=0.4
+    )])
     
-#     fig.update_layout(
-#         title='Team Capacity Risk Status',
-#         plot_bgcolor='rgba(0,0,0,0)',
-#         paper_bgcolor='rgba(0,0,0,0)',
-#         font={'color': 'white'},
-#         height=350
-#     )
+    fig.update_layout(
+        title='Team Capacity Risk Status',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font={'color': 'white'},
+        height=350
+    )
     
-#     return fig
+    return fig
 
 # ============================================================================
 # VISUALIZATION (Beautiful & Professional)
@@ -1086,43 +1036,15 @@ def main():
             st.success("✅ Connected to Azure DevOps")
             if 'last_sync_time' in st.session_state:
                 st.caption(f"Last sync: {st.session_state.last_sync_time}")
-        # else:
-        #     st.warning("⚠️ Using demo data")
+        else:
+            st.warning("⚠️ Using demo data")
         
-        # # CHANGE: Sidebar toggle button
-        # if st.button("☰ Settings", width="stretch", help="Open/close sidebar"):
-        #     st.info("👈 Look at the sidebar on the left (or click the **>** arrow at top-left)")
+        # CHANGE: Sidebar toggle button
+        if st.button("☰ Settings", use_container_width=True, help="Open/close sidebar"):
+            st.info("👈 Look at the sidebar on the left (or click the **>** arrow at top-left)")
     
     st.divider()
-    if not st.session_state.get("azure_connected", False):
-        with st.expander("⚙️ Azure DevOps Configuration (Required)", expanded=True):
-            st.info(
-                "If you don’t see the sidebar, configure Azure DevOps here.\n\n"
-                "Use a PAT with **Work Items → Read** permission."
-            )
-
-            org_fallback = st.text_input("Organization", key="org_fallback")
-            project_fallback = st.text_input("Project", key="project_fallback")
-            pat_fallback = st.text_input("PAT", type="password", key="pat_fallback")
-
-            if st.button("🔐 Connect Azure DevOps", width="stretch"):
-                if org_fallback and project_fallback and pat_fallback:
-                    client = AzureDevOpsClient(org_fallback, project_fallback, pat_fallback)
-                    sprints = client.get_sprints()
-
-                    if sprints:
-                        st.session_state.azure_org = org_fallback
-                        st.session_state.azure_project = project_fallback
-                        st.session_state.azure_pat = pat_fallback
-                        st.session_state.azure_connected = True
-                        st.session_state.azure_sprints = sprints
-                        st.success("✅ Connected successfully")
-                        st.rerun()
-                    else:
-                        st.error("❌ Connected but no sprints found")
-                else:
-                    st.error("❌ Fill all fields")
-
+    
     # Sidebar Configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
@@ -1181,7 +1103,7 @@ def main():
             )
             
             # CHANGE: Add Test Connection button inside form
-            test_connection = st.form_submit_button("🔐 Test Connection", width="stretch", type="primary")
+            test_connection = st.form_submit_button("🔐 Test Connection", use_container_width=True, type="primary")
         
         # CHANGE: Handle connection test
         if test_connection:
@@ -1203,8 +1125,6 @@ def main():
                             st.session_state.azure_sprints = sprints
                             
                             st.success(f"✅ Connected successfully! Found {len(sprints)} sprints")
-                            st.info("➡️ Next step: Go to **Sprint Backlog** tab and click **Sync from Azure DevOps**")
-
                         else:
                             st.warning("⚠️ Connected but no sprints found")
                             st.session_state.azure_connected = False
@@ -1250,7 +1170,7 @@ def main():
         edited_mapping = st.data_editor(
             mapping_df,
             hide_index=True,
-            width="stretch",
+            use_container_width=True,
             num_rows="dynamic"
         )
         
@@ -1349,7 +1269,7 @@ def main():
         
         st.dataframe(
             display_df,
-            width="stretch",
+            use_container_width=True,
             hide_index=True,
             height=250
         )
@@ -1370,15 +1290,15 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.plotly_chart(create_capacity_chart(capacity_df), width="stretch")
+            st.plotly_chart(create_capacity_chart(capacity_df), use_container_width=True)
         
         with col2:
-            st.plotly_chart(create_utilization_gauge(capacity_df), width="stretch")
+            st.plotly_chart(create_utilization_gauge(capacity_df), use_container_width=True)
         
         col3, col4 = st.columns(2)
         
         with col3:
-            st.plotly_chart(create_risk_summary(capacity_df), width="stretch")
+            st.plotly_chart(create_risk_summary(capacity_df), use_container_width=True)
         
         with col4:
             # Placeholder for key metric or keep empty for balance
@@ -1396,16 +1316,16 @@ def main():
             col5, col6 = st.columns(2)
             
             with col5:
-                st.plotly_chart(create_capacity_heatmap(capacity_df), width="stretch")
+                st.plotly_chart(create_capacity_heatmap(capacity_df), use_container_width=True)
             
             with col6:
-                st.plotly_chart(create_workload_distribution(work_items_df), width="stretch")
+                st.plotly_chart(create_workload_distribution(work_items_df), use_container_width=True)
             
             col7, col8 = st.columns(2)
             
             with col7:
                 if len(capacity_df) > 0:
-                    st.plotly_chart(create_capacity_waterfall(capacity_df), width="stretch")
+                    st.plotly_chart(create_capacity_waterfall(capacity_df), use_container_width=True)
             
             with col8:
                 st.info("""
@@ -1445,13 +1365,12 @@ def main():
         st.header("Sprint Backlog")
         
         # Azure DevOps sync
-        # if pat and organization and project:
-        if st.session_state.get('azure_connected', False):
+        if pat and organization and project:
             col1, col2 = st.columns([3, 1])
             with col1:
-                sync_button = st.button("🔄 Sync from Azure DevOps", width="stretch")
+                sync_button = st.button("🔄 Sync from Azure DevOps", use_container_width=True)
             with col2:
-                if st.button("🗑️ Clear PAT", width="stretch"):
+                if st.button("🗑️ Clear PAT", use_container_width=True):
                     st.session_state.pat_cleared = True
                     st.info("PAT cleared from memory")
             
@@ -1487,7 +1406,7 @@ def main():
                     except Exception as e:
                         st.error(f"Failed to sync: {str(e)}")
         else:
-            st.info("🔗 Connect Azure DevOps from the sidebar to enable sprint sync")
+            st.info("👆 Enter your Azure DevOps credentials in the sidebar to sync sprint data")
         
         # Work items summary
         col1, col2, col3, col4 = st.columns(4)
@@ -1513,7 +1432,7 @@ def main():
         # Work items table - ensure text is visible
         st.dataframe(
             work_items_df,
-            width="stretch",
+            use_container_width=True,
             hide_index=True,
             height=400
         )
@@ -1532,7 +1451,7 @@ def main():
                 data=csv,
                 file_name=f"sprint_backlog_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                width="stretch"
+                use_container_width=True
             )
         
         with col2:
@@ -1547,7 +1466,7 @@ def main():
                 data=buffer.getvalue(),
                 file_name=f"sprint_capacity_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch"
+                use_container_width=True
             )
         
         with col3:
@@ -1578,7 +1497,7 @@ RISK STATUS:
                 data=report,
                 file_name=f"capacity_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                width="stretch"
+                use_container_width=True
             )
     
     # ========================================================================
@@ -1595,7 +1514,7 @@ RISK STATUS:
         st.subheader("Current Team")
         st.dataframe(
             capacity_df[['QA Name', 'Available Hours', 'Leave Hours', 'Support Hours', 'Adjusted Capacity']],
-            width="stretch",
+            use_container_width=True,
             hide_index=True
         )
         
@@ -1652,7 +1571,7 @@ RISK STATUS:
                     if 'QA Name' not in leave_df.columns or 'Leave Hours' not in leave_df.columns:
                         st.error("❌ CSV must have columns: 'QA Name' and 'Leave Hours'")
                     else:
-                        st.dataframe(leave_df, width="stretch")
+                        st.dataframe(leave_df, use_container_width=True)
                         
                         if st.button("Import Leave Data", key="import_leave"):
                             # Validate and update
@@ -1689,7 +1608,7 @@ RISK STATUS:
                     if 'QA Name' not in support_df.columns or 'Support Hours' not in support_df.columns:
                         st.error("❌ CSV must have columns: 'QA Name' and 'Support Hours'")
                     else:
-                        st.dataframe(support_df, width="stretch")
+                        st.dataframe(support_df, use_container_width=True)
                         
                         if st.button("Import Support Data", key="import_support"):
                             # Validate and update
