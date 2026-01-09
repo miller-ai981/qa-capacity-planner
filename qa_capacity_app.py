@@ -13,6 +13,14 @@ import json
 from typing import Dict, List, Optional
 import io
 
+# CHANGE LOG (Recent updates):
+# - Fixed calculate_qa_hours() to read from session state (user-editable mapping)
+# - Added Azure DevOps connection form with Test Connection button
+# - Added connection status display in header
+# - Block sprint sync unless Azure is connected
+# - Reduced chart overload (moved advanced charts to expander)
+# - Added last sync time tracking
+
 # ============================================================================
 # CONFIGURATION & ASSUMPTIONS
 # ============================================================================
@@ -65,53 +73,9 @@ st.markdown("""
     }
     
     /* Global text color override - catches all grey text */
-    # body, p, span, div, label, h1, h2, h3, h4, h5, h6, li, td, th, a {
-    #     color: rgba(255, 255, 255, 0.95) !important;
-    # }
-            
-    /* =======================
-   SAFE TEXT COLOR RULES
-   ======================= */
-
-/* Default app text (outside tables) */
-.stApp, 
-.stMarkdown, 
-.stText, 
-.stAlert, 
-.stMetric, 
-.stTabs, 
-.stExpander {
-    color: rgba(255, 255, 255, 0.95);
-}
-
-/* =======================
-   DATAFRAME FIX (CRITICAL)
-   ======================= */
-
-[data-testid="stDataFrame"] {
-    background-color: white !important;
-}
-
-[data-testid="stDataFrame"] table {
-    background-color: white !important;
-}
-
-/* Force visible text inside dataframe cells */
-[data-testid="stDataFrame"] td,
-[data-testid="stDataFrame"] td * {
-    color: #1a202c !important;
-    background-color: white !important;
-    font-weight: 500 !important;
-}
-
-/* Headers stay dark-themed */
-[data-testid="stDataFrame"] th,
-[data-testid="stDataFrame"] th * {
-    color: white !important;
-    background-color: rgba(102, 126, 234, 0.6) !important;
-    font-weight: 700 !important;
-}
-
+    body, p, span, div, label, h1, h2, h3, h4, h5, h6, li, td, th, a {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
     
     .stApp {
         background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
@@ -370,11 +334,11 @@ st.markdown("""
     }
     
     /* Make other text white (not in dataframes) */
-    # body p:not([data-testid="stDataFrame"] p), 
-    # body span:not([data-testid="stDataFrame"] span), 
-    # body div:not([data-testid="stDataFrame"] div) {
-    #     color: rgba(255, 255, 255, 0.95) !important;
-    # }
+    body p:not([data-testid="stDataFrame"] p), 
+    body span:not([data-testid="stDataFrame"] span), 
+    body div:not([data-testid="stDataFrame"] div) {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
     
     /* Headings white */
     h1, h2, h3, h4, h5, h6 {
@@ -590,11 +554,19 @@ class AzureDevOpsClient:
 # ============================================================================
 
 def calculate_qa_hours(story_points: int) -> int:
-    """Convert story points to estimated QA hours"""
+    """
+    Convert story points to estimated QA hours
+    
+    CHANGE LOG: Now reads from session state if mapping was edited by user
+    Falls back to default QA_HOURS_MAPPING if not customized
+    """
+    # Use custom mapping if user edited it, otherwise use default
+    mapping = st.session_state.get('qa_hours_mapping', QA_HOURS_MAPPING)
+    
     if story_points > 10:
         # For story points above 10, use the max mapping value
-        return QA_HOURS_MAPPING.get(10, 9)
-    return QA_HOURS_MAPPING.get(story_points, 0)
+        return mapping.get(10, 9)
+    return mapping.get(story_points, 0)
 
 def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
     """Convert Azure DevOps work items to structured data"""
@@ -696,63 +668,63 @@ def calculate_capacity(qa_members: List[Dict], sprint_days: int, daily_capacity:
 # VISUALIZATION (Simple & Clear)
 # ============================================================================
 
-def create_capacity_chart(capacity_df: pd.DataFrame):
-    """Simple bar chart showing capacity breakdown"""
-    fig = go.Figure()
+# def create_capacity_chart(capacity_df: pd.DataFrame):
+#     """Simple bar chart showing capacity breakdown"""
+#     fig = go.Figure()
     
-    fig.add_trace(go.Bar(
-        name='Assigned',
-        x=capacity_df['QA Name'],
-        y=capacity_df['Assigned Hours'],
-        marker_color='#667eea'
-    ))
+#     fig.add_trace(go.Bar(
+#         name='Assigned',
+#         x=capacity_df['QA Name'],
+#         y=capacity_df['Assigned Hours'],
+#         marker_color='#667eea'
+#     ))
     
-    fig.add_trace(go.Bar(
-        name='Remaining',
-        x=capacity_df['QA Name'],
-        y=capacity_df['Remaining Hours'],
-        marker_color='#48bb78'
-    ))
+#     fig.add_trace(go.Bar(
+#         name='Remaining',
+#         x=capacity_df['QA Name'],
+#         y=capacity_df['Remaining Hours'],
+#         marker_color='#48bb78'
+#     ))
     
-    fig.update_layout(
-        title='QA Workload Overview',
-        xaxis_title='QA Members',
-        yaxis_title='Hours',
-        barmode='stack',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font={'color': 'white'},
-        height=400
-    )
+#     fig.update_layout(
+#         title='QA Workload Overview',
+#         xaxis_title='QA Members',
+#         yaxis_title='Hours',
+#         barmode='stack',
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         font={'color': 'white'},
+#         height=400
+#     )
     
-    return fig
+#     return fig
 
-def create_risk_summary(capacity_df: pd.DataFrame):
-    """Simple pie chart showing risk distribution"""
-    risk_counts = capacity_df['Risk Status'].value_counts()
+# def create_risk_summary(capacity_df: pd.DataFrame):
+#     """Simple pie chart showing risk distribution"""
+#     risk_counts = capacity_df['Risk Status'].value_counts()
     
-    colors = {
-        '🔴 Overallocated': '#fc4a1a',
-        '🟡 Tight Buffer': '#f7b733',
-        '🟢 Healthy': '#48bb78'
-    }
+#     colors = {
+#         '🔴 Overallocated': '#fc4a1a',
+#         '🟡 Tight Buffer': '#f7b733',
+#         '🟢 Healthy': '#48bb78'
+#     }
     
-    fig = go.Figure(data=[go.Pie(
-        labels=risk_counts.index,
-        values=risk_counts.values,
-        marker_colors=[colors.get(label, '#667eea') for label in risk_counts.index],
-        hole=0.4
-    )])
+#     fig = go.Figure(data=[go.Pie(
+#         labels=risk_counts.index,
+#         values=risk_counts.values,
+#         marker_colors=[colors.get(label, '#667eea') for label in risk_counts.index],
+#         hole=0.4
+#     )])
     
-    fig.update_layout(
-        title='Team Capacity Risk Status',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font={'color': 'white'},
-        height=350
-    )
+#     fig.update_layout(
+#         title='Team Capacity Risk Status',
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         font={'color': 'white'},
+#         height=350
+#     )
     
-    return fig
+#     return fig
 
 # ============================================================================
 # VISUALIZATION (Beautiful & Professional)
@@ -1035,39 +1007,145 @@ def create_capacity_waterfall(capacity_df: pd.DataFrame):
 # ============================================================================
 
 def main():
-    # Header with logo
-    st.markdown("""
-        <h1 style='text-align: left; margin-bottom: 5px;'>
-            <span style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-                        font-size: 48px; font-weight: 800;'>
-                🎯 QA Capacity Intelligence Platform
-            </span>
-        </h1>
-        <p style='color: rgba(255,255,255,0.7); font-size: 18px; margin-top: -10px; font-weight: 500;'>
-            AI-Powered Sprint Capacity Management & Risk Analytics
-        </p>
-    """, unsafe_allow_html=True)
-    st.markdown("""
-<div class="info-box">
-<strong>How to use this tool</strong><br>
-1️⃣ Configure sprint length and daily QA capacity in the sidebar<br>
-2️⃣ Sync sprint work items from Azure DevOps (or use demo data)<br>
-3️⃣ Review the <strong>QA Capacity Table</strong> for risk (🔴 🟡 🟢)<br>
-4️⃣ Resolve overloads <em>before</em> sprint starts
-</div>
-""", unsafe_allow_html=True)
-
+    # CHANGE: Initialize session state for sidebar visibility
+    if 'sidebar_open' not in st.session_state:
+        st.session_state.sidebar_open = True
+    
+    # Header with logo and connection status
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.markdown("""
+            <h1 style='text-align: left; margin-bottom: 5px;'>
+                <span style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                            font-size: 48px; font-weight: 800;'>
+                    🎯 QA Capacity Intelligence Platform
+                </span>
+            </h1>
+            <p style='color: rgba(255,255,255,0.7); font-size: 18px; margin-top: -10px; font-weight: 500;'>
+                AI-Powered Sprint Capacity Management & Risk Analytics
+            </p>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # CHANGE: Show Azure connection status
+        if st.session_state.get('azure_connected', False):
+            st.success("✅ Connected to Azure DevOps")
+            if 'last_sync_time' in st.session_state:
+                st.caption(f"Last sync: {st.session_state.last_sync_time}")
+        # else:
+        #     st.warning("⚠️ Using demo data")
+        
+        # # CHANGE: Sidebar toggle button
+        # if st.button("☰ Settings", width="stretch", help="Open/close sidebar"):
+        #     st.info("👈 Look at the sidebar on the left (or click the **>** arrow at top-left)")
+    
+    st.divider()
+    
     # Sidebar Configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
         
-        st.subheader("Azure DevOps Connection")
-        st.warning("⚠️ Your PAT is sensitive - keep it secure and don't share it")
-        organization = st.text_input("Organization", value="your-org")
-        project = st.text_input("Project", value="your-project")
-        pat = st.text_input("Personal Access Token (PAT)", type="password", 
-                           help="Required permission: Work Items (Read)")
+        # Add instruction to reopen sidebar
+        st.markdown("""
+        <div style='background: rgba(102, 126, 234, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px;'>
+        <small>💡 <b>Tip:</b> Click the <b>&gt;</b> arrow at top-left to reopen this sidebar anytime</small>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.subheader("🔗 Azure DevOps Connection")
+        
+        # CHANGE: Wrap Azure DevOps inputs in a form for proper submission
+        with st.form("azure_devops_form"):
+            # Clear instructions
+            with st.expander("📖 How to get Azure DevOps credentials", expanded=False):
+                st.markdown("""
+                **Step 1: Organization & Project**
+                - Organization: The name in your Azure DevOps URL
+                  - Example: `dev.azure.com/YOUR-ORG`
+                - Project: Your project name
+                
+                **Step 2: Create Personal Access Token (PAT)**
+                1. Go to Azure DevOps
+                2. Click User Settings (top right) → Personal Access Tokens
+                3. Click "+ New Token"
+                4. Name: "QA Capacity Planner"
+                5. **Scopes: Select "Work Items" → Check "Read"** ✅
+                6. Click "Create"
+                7. **Copy the token immediately** (you won't see it again!)
+                8. Paste it below
+                """)
+            
+            st.warning("⚠️ Your PAT is sensitive - keep it secure")
+            
+            organization = st.text_input(
+                "Organization Name", 
+                value=st.session_state.get('azure_org', ''),
+                placeholder="your-organization",
+                help="Example: If your URL is dev.azure.com/mycompany, enter 'mycompany'"
+            )
+            
+            project = st.text_input(
+                "Project Name", 
+                value=st.session_state.get('azure_project', ''),
+                placeholder="your-project",
+                help="Your Azure DevOps project name"
+            )
+            
+            pat = st.text_input(
+                "Personal Access Token (PAT)", 
+                type="password",
+                placeholder="Paste your PAT here",
+                help="Must have 'Work Items (Read)' permission"
+            )
+            
+            # CHANGE: Add Test Connection button inside form
+            test_connection = st.form_submit_button("🔐 Test Connection", width="stretch", type="primary")
+        
+        # CHANGE: Handle connection test
+        if test_connection:
+            if not organization or not project or not pat:
+                st.error("❌ Please fill in all fields")
+            else:
+                with st.spinner("Testing connection to Azure DevOps..."):
+                    try:
+                        # Lightweight test: fetch sprints
+                        client = AzureDevOpsClient(organization, project, pat)
+                        sprints = client.get_sprints()
+                        
+                        if sprints:
+                            # Store credentials and connection status
+                            st.session_state.azure_org = organization
+                            st.session_state.azure_project = project
+                            st.session_state.azure_pat = pat
+                            st.session_state.azure_connected = True
+                            st.session_state.azure_sprints = sprints
+                            
+                            st.success(f"✅ Connected successfully! Found {len(sprints)} sprints")
+                            st.info("➡️ Next step: Go to **Sprint Backlog** tab and click **Sync from Azure DevOps**")
+
+                        else:
+                            st.warning("⚠️ Connected but no sprints found")
+                            st.session_state.azure_connected = False
+                            
+                    except requests.exceptions.HTTPError as e:
+                        st.session_state.azure_connected = False
+                        if e.response.status_code == 401:
+                            st.error("❌ Authentication failed - Invalid PAT or insufficient permissions")
+                            st.info("💡 Make sure your PAT has 'Work Items (Read)' scope enabled")
+                        elif e.response.status_code == 404:
+                            st.error("❌ Organization or Project not found")
+                            st.info("💡 Double-check your organization and project names")
+                        else:
+                            st.error(f"❌ Connection failed: {e.response.status_code}")
+                    except Exception as e:
+                        st.session_state.azure_connected = False
+                        st.error(f"❌ Connection error: {str(e)}")
+        
+        # Show current connection status
+        if st.session_state.get('azure_connected', False):
+            st.success(f"✅ Connected to: {st.session_state.get('azure_org')}/{st.session_state.get('azure_project')}")
         
         st.divider()
         
@@ -1092,7 +1170,7 @@ def main():
         edited_mapping = st.data_editor(
             mapping_df,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
             num_rows="dynamic"
         )
         
@@ -1191,7 +1269,7 @@ def main():
         
         st.dataframe(
             display_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             height=250
         )
@@ -1206,44 +1284,56 @@ def main():
         
         st.divider()
         
-        # Beautiful visualizations in a 2x2 grid
-        # st.subheader("📊 Visual Analytics")
-        st.subheader("📊 Sprint Risk & Capacity Overview")
-
+        # CHANGE: Reduce chart overload - show essential charts first
+        st.subheader("📊 Key Metrics")
+        
         col1, col2 = st.columns(2)
-
+        
         with col1:
-            st.plotly_chart(create_capacity_chart(capacity_df), use_container_width=True)
-
+            st.plotly_chart(create_capacity_chart(capacity_df), width="stretch")
+        
         with col2:
-           st.plotly_chart(create_risk_summary(capacity_df), use_container_width=True)
-
+            st.plotly_chart(create_utilization_gauge(capacity_df), width="stretch")
         
-        # col1, col2 = st.columns(2)
+        col3, col4 = st.columns(2)
         
-        # with col1:
-        #     st.plotly_chart(create_capacity_chart(capacity_df), use_container_width=True)
+        with col3:
+            st.plotly_chart(create_risk_summary(capacity_df), width="stretch")
         
-        # with col2:
-        #     st.plotly_chart(create_utilization_gauge(capacity_df), use_container_width=True)
+        with col4:
+            # Placeholder for key metric or keep empty for balance
+            st.info("""
+            💡 **Quick Actions**
+            - Review capacity table above
+            - Check risk alerts
+            - Export reports in Sprint Backlog tab
+            """)
         
-        # col3, col4 = st.columns(2)
-        
-        # with col3:
-        #     st.plotly_chart(create_risk_summary(capacity_df), use_container_width=True)
-        
-        # with col4:
-        #     st.plotly_chart(create_capacity_heatmap(capacity_df), use_container_width=True)
-        
-        # # Additional charts
-        # col5, col6 = st.columns(2)
-        
-        # with col5:
-        #     st.plotly_chart(create_workload_distribution(work_items_df), use_container_width=True)
-        
-        # with col6:
-        #     if len(capacity_df) > 0:
-        #         st.plotly_chart(create_capacity_waterfall(capacity_df), use_container_width=True)
+        # CHANGE: Move advanced charts into expander
+        with st.expander("📈 Advanced Analytics", expanded=False):
+            st.markdown("*Additional visualizations for deeper analysis*")
+            
+            col5, col6 = st.columns(2)
+            
+            with col5:
+                st.plotly_chart(create_capacity_heatmap(capacity_df), width="stretch")
+            
+            with col6:
+                st.plotly_chart(create_workload_distribution(work_items_df), width="stretch")
+            
+            col7, col8 = st.columns(2)
+            
+            with col7:
+                if len(capacity_df) > 0:
+                    st.plotly_chart(create_capacity_waterfall(capacity_df), width="stretch")
+            
+            with col8:
+                st.info("""
+                📊 **Chart Explanations**
+                - **Heatmap**: Compare metrics across team
+                - **Sunburst**: Work distribution by type
+                - **Waterfall**: Capacity breakdown detail
+                """)
         
         # Recommendations (rule-based, not AI)
         st.divider()
@@ -1275,12 +1365,13 @@ def main():
         st.header("Sprint Backlog")
         
         # Azure DevOps sync
-        if pat and organization and project:
+        # if pat and organization and project:
+        if st.session_state.get('azure_connected', False):
             col1, col2 = st.columns([3, 1])
             with col1:
-                sync_button = st.button("🔄 Sync from Azure DevOps", use_container_width=True)
+                sync_button = st.button("🔄 Sync from Azure DevOps", width="stretch")
             with col2:
-                if st.button("🗑️ Clear PAT", use_container_width=True):
+                if st.button("🗑️ Clear PAT", width="stretch"):
                     st.session_state.pat_cleared = True
                     st.info("PAT cleared from memory")
             
@@ -1316,7 +1407,7 @@ def main():
                     except Exception as e:
                         st.error(f"Failed to sync: {str(e)}")
         else:
-            st.info("👆 Enter your Azure DevOps credentials in the sidebar to sync sprint data")
+            st.info("🔗 Connect Azure DevOps from the sidebar to enable sprint sync")
         
         # Work items summary
         col1, col2, col3, col4 = st.columns(4)
@@ -1342,7 +1433,7 @@ def main():
         # Work items table - ensure text is visible
         st.dataframe(
             work_items_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             height=400
         )
@@ -1361,7 +1452,7 @@ def main():
                 data=csv,
                 file_name=f"sprint_backlog_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                width="stretch"
             )
         
         with col2:
@@ -1376,7 +1467,7 @@ def main():
                 data=buffer.getvalue(),
                 file_name=f"sprint_capacity_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                width="stretch"
             )
         
         with col3:
@@ -1407,7 +1498,7 @@ RISK STATUS:
                 data=report,
                 file_name=f"capacity_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                width="stretch"
             )
     
     # ========================================================================
@@ -1424,7 +1515,7 @@ RISK STATUS:
         st.subheader("Current Team")
         st.dataframe(
             capacity_df[['QA Name', 'Available Hours', 'Leave Hours', 'Support Hours', 'Adjusted Capacity']],
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
         
@@ -1481,7 +1572,7 @@ RISK STATUS:
                     if 'QA Name' not in leave_df.columns or 'Leave Hours' not in leave_df.columns:
                         st.error("❌ CSV must have columns: 'QA Name' and 'Leave Hours'")
                     else:
-                        st.dataframe(leave_df, use_container_width=True)
+                        st.dataframe(leave_df, width="stretch")
                         
                         if st.button("Import Leave Data", key="import_leave"):
                             # Validate and update
@@ -1518,7 +1609,7 @@ RISK STATUS:
                     if 'QA Name' not in support_df.columns or 'Support Hours' not in support_df.columns:
                         st.error("❌ CSV must have columns: 'QA Name' and 'Support Hours'")
                     else:
-                        st.dataframe(support_df, use_container_width=True)
+                        st.dataframe(support_df, width="stretch")
                         
                         if st.button("Import Support Data", key="import_support"):
                             # Validate and update
