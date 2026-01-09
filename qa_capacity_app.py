@@ -342,6 +342,48 @@ st.markdown("""
     # [data-testid="stDataFrame"] thead * {
     #     color: white !important;
     # }
+            
+            /* =========================
+   STREAMLIT DATAFRAME FIX
+   ========================= */
+
+/* Dataframe container */
+[data-testid="stDataFrame"] {
+    background-color: white !important;
+    border-radius: 12px;
+}
+
+/* Column headers */
+[data-testid="stDataFrame"] thead th {
+    background-color: #667eea !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+/* Table cells */
+[data-testid="stDataFrame"] tbody td {
+    background-color: white !important;
+    color: #1a202c !important;  /* DARK TEXT */
+    font-weight: 500 !important;
+}
+
+/* Inner cell text (AG Grid uses nested divs/spans) */
+[data-testid="stDataFrame"] td div,
+[data-testid="stDataFrame"] td span,
+[data-testid="stDataFrame"] td p {
+    color: #1a202c !important;
+}
+
+/* Hover effect */
+[data-testid="stDataFrame"] tbody tr:hover td {
+    background-color: #f0f2f6 !important;
+}
+
+/* Prevent global white text override inside dataframe */
+[data-testid="stDataFrame"] * {
+    text-shadow: none !important;
+}
+
     
     /* Make other text white (not in dataframes) */
     body p:not([data-testid="stDataFrame"] p), 
@@ -1052,7 +1094,35 @@ def main():
         #     st.info("👈 Look at the sidebar on the left (or click the **>** arrow at top-left)")
     
     st.divider()
-    
+    if not st.session_state.get("azure_connected", False):
+        with st.expander("⚙️ Azure DevOps Configuration (Required)", expanded=True):
+            st.info(
+                "If you don’t see the sidebar, configure Azure DevOps here.\n\n"
+                "Use a PAT with **Work Items → Read** permission."
+            )
+
+            org_fallback = st.text_input("Organization", key="org_fallback")
+            project_fallback = st.text_input("Project", key="project_fallback")
+            pat_fallback = st.text_input("PAT", type="password", key="pat_fallback")
+
+            if st.button("🔐 Connect Azure DevOps", width="stretch"):
+                if org_fallback and project_fallback and pat_fallback:
+                    client = AzureDevOpsClient(org_fallback, project_fallback, pat_fallback)
+                    sprints = client.get_sprints()
+
+                    if sprints:
+                        st.session_state.azure_org = org_fallback
+                        st.session_state.azure_project = project_fallback
+                        st.session_state.azure_pat = pat_fallback
+                        st.session_state.azure_connected = True
+                        st.session_state.azure_sprints = sprints
+                        st.success("✅ Connected successfully")
+                        st.rerun()
+                    else:
+                        st.error("❌ Connected but no sprints found")
+                else:
+                    st.error("❌ Fill all fields")
+
     # Sidebar Configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
