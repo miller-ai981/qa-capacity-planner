@@ -77,6 +77,14 @@ st.markdown("""
    MAIN CONTENT TEXT (WHITE)
    ========================= */
  
+.stApp label, 
+.stApp h1, 
+.stApp h2, 
+.stApp h3, 
+.stApp h4, 
+.stApp h6 {
+    color: rgba(255, 255, 255, 0.95);
+}
 
     
     .stApp {
@@ -268,72 +276,72 @@ st.markdown("""
     }
     
     /* Dataframe */
-    .dataframe {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border-radius: 15px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    # .dataframe {
+    #     background: rgba(255, 255, 255, 0.05);
+    #     backdrop-filter: blur(10px);
+    #     border-radius: 15px;
+    #     border: 1px solid rgba(255, 255, 255, 0.1);
+    # }
     
-    /* Column headers in dataframes */
-    .stDataFrame th {
-        color: white !important;
-        background-color: rgba(102, 126, 234, 0.5) !important;
-        font-weight: 600 !important;
-    }
+    # /* Column headers in dataframes */
+    # .stDataFrame th {
+    #     color: white !important;
+    #     background-color: rgba(102, 126, 234, 0.5) !important;
+    #     font-weight: 600 !important;
+    # }
     
-    /* Dataframe cells - FORCE DARK TEXT WITH HIGHEST SPECIFICITY */
-    .stDataFrame td {
-        color: #1a202c !important;
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        font-weight: 500 !important;
-    }
+    # /* Dataframe cells - FORCE DARK TEXT WITH HIGHEST SPECIFICITY */
+    # .stDataFrame td {
+    #     color: #1a202c !important;
+    #     background-color: rgba(255, 255, 255, 0.95) !important;
+    #     font-weight: 500 !important;
+    # }
     
-    /* Target the actual text elements inside cells */
-    .stDataFrame td div {
-        color: #1a202c !important;
-    }
+    # /* Target the actual text elements inside cells */
+    # .stDataFrame td div {
+    #     color: #1a202c !important;
+    # }
     
-    .stDataFrame td span {
-        color: #1a202c !important;
-    }
+    # .stDataFrame td span {
+    #     color: #1a202c !important;
+    # }
     
-    .stDataFrame td p {
-        color: #1a202c !important;
-    }
+    # .stDataFrame td p {
+    #     color: #1a202c !important;
+    # }
     
-    /* Dataframe container */
-    [data-testid="stDataFrame"] {
-        background: rgba(255, 255, 255, 0.95) !important;
-    }
+    # /* Dataframe container */
+    # [data-testid="stDataFrame"] {
+    #     background: rgba(255, 255, 255, 0.95) !important;
+    # }
     
-    /* Table body background */
-    [data-testid="stDataFrame"] table {
-        background-color: white !important;
-    }
+    # /* Table body background */
+    # [data-testid="stDataFrame"] table {
+    #     background-color: white !important;
+    # }
     
-    [data-testid="stDataFrame"] tbody {
-        background-color: white !important;
-    }
+    # [data-testid="stDataFrame"] tbody {
+    #     background-color: white !important;
+    # }
     
-    /* Table rows */
-    [data-testid="stDataFrame"] tbody tr {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-    }
+    # /* Table rows */
+    # [data-testid="stDataFrame"] tbody tr {
+    #     background-color: rgba(255, 255, 255, 0.95) !important;
+    # }
     
-    [data-testid="stDataFrame"] tbody tr:hover {
-        background-color: rgba(240, 242, 246, 1) !important;
-    }
+    # [data-testid="stDataFrame"] tbody tr:hover {
+    #     background-color: rgba(240, 242, 246, 1) !important;
+    # }
     
-    /* Force all text in dataframes to be dark */
-    [data-testid="stDataFrame"] * {
-        color: #1a202c !important;
-    }
+    # /* Force all text in dataframes to be dark */
+    # [data-testid="stDataFrame"] * {
+    #     color: #1a202c !important;
+    # }
     
-    /* But keep headers white */
-    [data-testid="stDataFrame"] thead * {
-        color: white !important;
-    }
+    # /* But keep headers white */
+    # [data-testid="stDataFrame"] thead * {
+    #     color: white !important;
+    # }
     
     /* Make other text white (not in dataframes) */
     body p:not([data-testid="stDataFrame"] p), 
