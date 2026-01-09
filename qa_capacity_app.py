@@ -73,9 +73,11 @@ st.markdown("""
     }
     
     /* Global text color override - catches all grey text */
-    body, p, span, div, label, h1, h2, h3, h4, h5, h6, li, td, th, a {
-        color: rgba(255, 255, 255, 0.95) !important;
-    }
+/* =========================
+   MAIN CONTENT TEXT (WHITE)
+   ========================= */
+ 
+
     
     .stApp {
         background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
