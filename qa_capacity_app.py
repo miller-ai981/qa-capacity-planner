@@ -1267,13 +1267,20 @@ def main():
             'Utilization %', 'Risk Status'
         ]]
         
-        st.dataframe(
-            display_df,
-            use_container_width=True,
-            hide_index=True,
-            height=250
-        )
-        
+        # st.dataframe(
+        #     display_df,
+        #     use_container_width=True,
+        #     hide_index=True,
+        #     height=250
+        # )
+        st.data_editor(
+    display_df,
+    use_container_width=True,
+    hide_index=True,
+    height=250,
+    disabled=True
+)
+
         # Risk explanations
         st.markdown("**Risk Status Explained:**")
         for _, row in capacity_df.iterrows():
@@ -1430,12 +1437,14 @@ def main():
             st.warning(f"⚠️ {unassigned_count} items need QA assignment")
         
         # Work items table - ensure text is visible
-        st.dataframe(
-            work_items_df,
-            use_container_width=True,
-            hide_index=True,
-            height=400
+        st.data_editor(
+        work_items_df,
+        use_container_width=True,
+        hide_index=True,
+        height=400,
+        disabled=True
         )
+
         
         st.divider()
         
@@ -1512,12 +1521,18 @@ RISK STATUS:
         capacity_df = calculate_capacity(st.session_state.qa_members, sprint_days, daily_capacity)
         
         st.subheader("Current Team")
-        st.dataframe(
-            capacity_df[['QA Name', 'Available Hours', 'Leave Hours', 'Support Hours', 'Adjusted Capacity']],
-            use_container_width=True,
-            hide_index=True
-        )
-        
+        # st.dataframe(
+        #     capacity_df[['QA Name', 'Available Hours', 'Leave Hours', 'Support Hours', 'Adjusted Capacity']],
+        #     use_container_width=True,
+        #     hide_index=True
+        # )
+        st.data_editor(
+    capacity_df[['QA Name', 'Available Hours', 'Leave Hours', 'Support Hours', 'Adjusted Capacity']],
+    use_container_width=True,
+    hide_index=True,
+    disabled=True
+)
+
         st.divider()
         
         # Add new QA member
