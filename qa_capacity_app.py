@@ -594,12 +594,10 @@ class AzureDevOpsClient:
             "query": """
                 SELECT [System.Id], [System.Title], [System.WorkItemType], 
                        [System.State], [Microsoft.VSTS.Scheduling.StoryPoints],
-                       [System.AreaPath], [System.AssignedTo]
+                       [System.AreaPath], [System.AssignedTo], [Microsoft.VSTS.Common.TestedBy]
                 FROM WorkItems
-                WHERE [System.IterationPath] = @CurrentIteration
-                  AND [System.WorkItemType] IN ('User Story', 'Bug')
-                  AND [System.State] NOT IN ('Closed', 'Done', 'Removed')
-            """
+"""
+
         }
         
         # CHANGE: Optional AreaPath filter (advanced users only)
@@ -654,42 +652,59 @@ class AzureDevOpsClient:
 # PROBLEM 3: QA TEAM FILTERING (Client-side)
 # ============================================================================
 
-def filter_work_items_by_qa_team(work_items_df: pd.DataFrame, qa_team_input: str) -> pd.DataFrame:
-    """
-    CHANGE: Filter work items to ONLY include items assigned to defined QA team
+# def filter_work_items_by_qa_team(work_items_df: pd.DataFrame, qa_team_input: str) -> pd.DataFrame:
+#     """
+#     CHANGE: Filter work items to ONLY include items assigned to defined QA team
     
-    Args:
-        work_items_df: DataFrame of work items from Azure
-        qa_team_input: Comma-separated QA names (e.g. "Sarah, Ahmed, Mike")
+#     Args:
+#         work_items_df: DataFrame of work items from Azure
+#         qa_team_input: Comma-separated QA names (e.g. "Sarah, Ahmed, Mike")
     
-    Returns:
-        Filtered DataFrame with only QA-owned items
+#     Returns:
+#         Filtered DataFrame with only QA-owned items
         
-    RATIONALE:
-    - Developers, PMs, designers appear in AssignedTo
-    - Azure has no "QA Role" system field
-    - User explicitly defines their QA team
-    - Simple, secure, works everywhere
-    """
+#     RATIONALE:
+#     - Developers, PMs, designers appear in AssignedTo
+#     - Azure has no "QA Role" system field
+#     - User explicitly defines their QA team
+#     - Simple, secure, works everywhere
+#     """
+#     if not qa_team_input or not qa_team_input.strip():
+#         # If no QA team defined, return all items (fallback to old behavior)
+#         return work_items_df
+    
+#     # Parse comma-separated QA names and strip whitespace
+#     qa_names = [name.strip() for name in qa_team_input.split(',') if name.strip()]
+    
+#     if not qa_names:
+#         return work_items_df
+    
+#     # Filter: Keep only items assigned to defined QA team
+#     # Items assigned to others (devs, PMs) are excluded
+#     filtered = work_items_df[work_items_df['Assigned QA'].isin(qa_names)]
+    
+#     # Also keep unassigned items (QA will assign them)
+#     unassigned = work_items_df[work_items_df['Assigned QA'] == 'Unassigned']
+    
+#     result = pd.concat([filtered, unassigned], ignore_index=True)
+#     return result.sort_values('Assigned QA')  # PROBLEM 5: Sort by Assigned QA
+def filter_work_items_by_qa_team(work_items_df: pd.DataFrame, qa_team_input: str) -> pd.DataFrame:
+    '''Filter work items to only include items tested by defined QA team'''
     if not qa_team_input or not qa_team_input.strip():
-        # If no QA team defined, return all items (fallback to old behavior)
         return work_items_df
     
-    # Parse comma-separated QA names and strip whitespace
     qa_names = [name.strip() for name in qa_team_input.split(',') if name.strip()]
     
     if not qa_names:
         return work_items_df
     
-    # Filter: Keep only items assigned to defined QA team
-    # Items assigned to others (devs, PMs) are excluded
-    filtered = work_items_df[work_items_df['Assigned QA'].isin(qa_names)]
-    
-    # Also keep unassigned items (QA will assign them)
-    unassigned = work_items_df[work_items_df['Assigned QA'] == 'Unassigned']
+    # CHANGE: Filter using Tested By field instead of Assigned QA
+    filtered = work_items_df[work_items_df['Tested By'].isin(qa_names)]
+    unassigned = work_items_df[work_items_df['Tested By'] == 'Unassigned']
     
     result = pd.concat([filtered, unassigned], ignore_index=True)
-    return result.sort_values('Assigned QA')  # PROBLEM 5: Sort by Assigned QA
+    # CHANGE: Sort by Tested By instead of Assigned QA
+    return result.sort_values('Tested By').reset_index(drop=True)
 
 
 # ============================================================================
@@ -712,10 +727,14 @@ def calculate_qa_hours(story_points: int) -> int:
     return mapping.get(story_points, 0)
 
 # def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
-#     """Convert Azure DevOps work items to structured data"""
+#     """Convert Azure DevOps work items to structured data
+    
+#     CHANGE: Better handling of missing/malformed data
+#     """
 #     data = []
 #     for wi in work_items:
 #         fields = wi.get('fields', {})
+        
 #         # Handle missing story points gracefully
 #         story_points = fields.get('Microsoft.VSTS.Scheduling.StoryPoints')
 #         if story_points is None or story_points == '':
@@ -726,11 +745,15 @@ def calculate_qa_hours(story_points: int) -> int:
 #             except (ValueError, TypeError):
 #                 story_points = 0
         
-#         # Handle missing assigned to
+#         # Handle missing assigned to (defensive)
 #         assigned_to = fields.get('System.AssignedTo', {})
 #         if isinstance(assigned_to, dict):
 #             assigned_qa = assigned_to.get('displayName', 'Unassigned')
 #         else:
+#             assigned_qa = 'Unassigned'
+        
+#         # CHANGE: Validate assigned_qa is not None or empty
+#         if not assigned_qa or assigned_qa.strip() == '':
 #             assigned_qa = 'Unassigned'
         
 #         data.append({
@@ -744,16 +767,13 @@ def calculate_qa_hours(story_points: int) -> int:
 #         })
     
 #     return pd.DataFrame(data)
+
 def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
-    """Convert Azure DevOps work items to structured data
-    
-    CHANGE: Better handling of missing/malformed data
-    """
+    '''Convert Azure DevOps work items to structured data'''
     data = []
     for wi in work_items:
         fields = wi.get('fields', {})
         
-        # Handle missing story points gracefully
         story_points = fields.get('Microsoft.VSTS.Scheduling.StoryPoints')
         if story_points is None or story_points == '':
             story_points = 0
@@ -763,16 +783,22 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
             except (ValueError, TypeError):
                 story_points = 0
         
-        # Handle missing assigned to (defensive)
+        # CHANGE: Extract TestedBy (QA ownership field)
+        tested_by = fields.get('Microsoft.VSTS.Common.TestedBy', {})
+        if isinstance(tested_by, dict):
+            qa_name = tested_by.get('displayName', 'Unassigned')
+        else:
+            qa_name = 'Unassigned'
+        
+        if not qa_name or qa_name.strip() == '':
+            qa_name = 'Unassigned'
+        
+        # Keep Assigned To for reference (optional)
         assigned_to = fields.get('System.AssignedTo', {})
         if isinstance(assigned_to, dict):
-            assigned_qa = assigned_to.get('displayName', 'Unassigned')
+            assigned_to_name = assigned_to.get('displayName', 'Unassigned')
         else:
-            assigned_qa = 'Unassigned'
-        
-        # CHANGE: Validate assigned_qa is not None or empty
-        if not assigned_qa or assigned_qa.strip() == '':
-            assigned_qa = 'Unassigned'
+            assigned_to_name = 'Unassigned'
         
         data.append({
             'ID': wi.get('id'),
@@ -781,19 +807,30 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
             'State': fields.get('System.State', ''),
             'Story Points': story_points,
             'QA Hours': calculate_qa_hours(story_points),
-            'Assigned QA': assigned_qa
+            'Tested By': qa_name,  # CHANGE: New column using TestedBy field
+            'Assigned To': assigned_to_name  # Optional reference
         })
     
     return pd.DataFrame(data)
 
-def update_qa_assigned_hours(qa_members: List[Dict], work_items_df: pd.DataFrame) -> List[Dict]:
-    """
-    Automatically update assigned hours for each QA member based on work items
-    """
-    # Calculate assigned hours from work items
-    assigned_hours = work_items_df[work_items_df['Assigned QA'] != 'Unassigned'].groupby('Assigned QA')['QA Hours'].sum().to_dict()
+# def update_qa_assigned_hours(qa_members: List[Dict], work_items_df: pd.DataFrame) -> List[Dict]:
+#     """
+#     Automatically update assigned hours for each QA member based on work items
+#     """
+#     # Calculate assigned hours from work items
+#     assigned_hours = work_items_df[work_items_df['Assigned QA'] != 'Unassigned'].groupby('Assigned QA')['QA Hours'].sum().to_dict()
     
-    # Update QA members
+#     # Update QA members
+#     for qa in qa_members:
+#         qa['assigned_hours'] = assigned_hours.get(qa['name'], 0)
+    
+#     return qa_members
+
+def update_qa_assigned_hours(qa_members: List[Dict], work_items_df: pd.DataFrame) -> List[Dict]:
+    '''Automatically update assigned hours for each QA member based on work items'''
+    # CHANGE: Group by Tested By field instead of Assigned QA
+    assigned_hours = work_items_df[work_items_df['Tested By'] != 'Unassigned'].groupby('Tested By')['QA Hours'].sum().to_dict()
+    
     for qa in qa_members:
         qa['assigned_hours'] = assigned_hours.get(qa['name'], 0)
     
@@ -1345,10 +1382,10 @@ def main():
 
         # CHANGE: QA Team definition (Problem 3)
         qa_team_input = st.text_input(
-        "QA Team Names (Comma-separated)",
-        value=st.session_state.get('qa_team_filter', ''),
-        placeholder="e.g., Sarah, Ahmed, Mike",
-        help="Define your QA team. Only work items assigned to these people will be included."
+            "QA Team Names (Comma-separated)",
+            value=st.session_state.get('qa_team_filter', ''),
+            placeholder="e.g., Sarah, Ahmed, Mike",
+            help="Define your QA team. Only items where Tested By = these names will be included."  # CHANGE
         )
         st.session_state.qa_team_filter = qa_team_input
 
@@ -1401,6 +1438,16 @@ def main():
             st.session_state.qa_hours_mapping.update(new_mapping)
     
     # Initialize session state for demo data
+    # if 'work_items_df' not in st.session_state:
+    #     st.session_state.work_items_df = pd.DataFrame({
+    #         'ID': [42540, 42541, 42542, 42543, 42544],
+    #         'Title': ['User login flow', 'API integration', 'UI redesign', 'Bug fix - crash', 'Data export'],
+    #         'Type': ['User Story', 'User Story', 'User Story', 'Bug', 'User Story'],
+    #         'State': ['New', 'In Progress', 'New', 'New', 'In Progress'],
+    #         'Story Points': [5, 8, 3, 2, 5],
+    #         'QA Hours': [7, 10, 5, 3, 7],
+    #         'Assigned QA': ['Sarah', 'Sarah', 'Ahmed', 'Unassigned', 'Ahmed']
+    #     })
     if 'work_items_df' not in st.session_state:
         st.session_state.work_items_df = pd.DataFrame({
             'ID': [42540, 42541, 42542, 42543, 42544],
@@ -1409,7 +1456,8 @@ def main():
             'State': ['New', 'In Progress', 'New', 'New', 'In Progress'],
             'Story Points': [5, 8, 3, 2, 5],
             'QA Hours': [7, 10, 5, 3, 7],
-            'Assigned QA': ['Sarah', 'Sarah', 'Ahmed', 'Unassigned', 'Ahmed']
+            'Tested By': ['Sarah', 'Sarah', 'Ahmed', 'Unassigned', 'Ahmed'],  # ✅ CHANGED
+            'Assigned To': ['Dev1', 'Dev2', 'Dev3', 'Dev4', 'Dev5']  # ✅ ADDED (optional reference)
         })
     
     if 'qa_members' not in st.session_state:
@@ -1433,8 +1481,9 @@ def main():
         work_items_df = st.session_state.work_items_df
         
         # Calculate unassigned hours
-        unassigned_items = work_items_df[work_items_df['Assigned QA'] == 'Unassigned']
+        unassigned_items = work_items_df[work_items_df['Tested By'] == 'Unassigned']  # CHANGE
         unassigned_hours = unassigned_items['QA Hours'].sum()
+
         
         # Key metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -1461,7 +1510,7 @@ def main():
         
         # Show unassigned warning if exists
         if len(unassigned_items) > 0:
-            st.warning(f"⚠️ **{len(unassigned_items)} work items ({unassigned_hours} hours) are unassigned** - These items need QA assignment before sprint can start")
+            st.warning(f"⚠️ **{len(unassigned_items)} work items ({unassigned_hours} hours) have no QA owner** - Assign via 'Tested By' field in Azure DevOps")
         
         st.divider()
         
@@ -1476,12 +1525,8 @@ def main():
             'Utilization %', 'Risk Status'
         ]]
         
-        st.dataframe(
-            display_df,
-            use_container_width=True,
-            hide_index=True,
-            height=250
-        )
+        display_cols = [col for col in work_items_df.columns if col != 'Assigned To']
+        st.dataframe(work_items_df[display_cols], use_container_width=True, hide_index=True, height=400)
         
         # Risk explanations
         st.markdown("**Risk Status Explained:**")
@@ -1634,8 +1679,13 @@ def main():
                         st.session_state.work_items_df = process_work_items(work_items)
                         
                         # CHANGE (PROBLEM 5): Sort by Assigned QA for better readability
+                        # st.session_state.work_items_df = st.session_state.work_items_df.sort_values(
+                        #     'Assigned QA', 
+                        #     ascending=True
+                        # ).reset_index(drop=True)
+
                         st.session_state.work_items_df = st.session_state.work_items_df.sort_values(
-                            'Assigned QA', 
+                            'Tested By',  # CHANGE: Sort by Tested By
                             ascending=True
                         ).reset_index(drop=True)
                         
@@ -1670,19 +1720,20 @@ def main():
         with col2:
             st.metric("Bugs", len(work_items_df[work_items_df['Type'] == 'Bug']))
         with col3:
-            unassigned_count = len(work_items_df[work_items_df['Assigned QA'] == 'Unassigned'])
-            st.metric("Unassigned", unassigned_count, 
-                     delta="Needs attention" if unassigned_count > 0 else None,
+            unassigned_count = len(work_items_df[work_items_df['Tested By'] == 'Unassigned'])  # CHANGE
+            st.metric("Unassigned (No QA Owner)", unassigned_count,  # CHANGE label
+                     delta="Needs QA assignment" if unassigned_count > 0 else None,  # CHANGE text
                      delta_color="inverse" if unassigned_count > 0 else "off")
         with col4:
-            unassigned_hours = work_items_df[work_items_df['Assigned QA'] == 'Unassigned']['QA Hours'].sum()
+            unassigned_hours = work_items_df[work_items_df['Tested By'] == 'Unassigned']['QA Hours'].sum()  # CHANGE
             st.metric("Unassigned Hours", f"{unassigned_hours} hrs")
         
         st.divider()
         
         # Highlight unassigned items
         if unassigned_count > 0:
-            st.warning(f"⚠️ {unassigned_count} items need QA assignment")
+            st.warning(f"⚠️ {unassigned_count} items have no QA owner (Tested By field is empty) - Assign in Azure DevOps")
+
         
         # Work items table - ensure text is visible
         st.dataframe(
