@@ -585,19 +585,21 @@ class AzureDevOpsClient:
         3. Optional AreaPath filter (user-provided, not hardcoded)
         4. Optional QA Team filter (client-side, after fetch)
         
-        Args:
+        Args:   
             area_path_filter: Optional AreaPath to scope to team (user input)
             qa_team: Optional comma-separated QA names to filter by
         """
         # Build WIQL query with @CurrentIteration macro
         wiql_query = {
-            "query": """
-                SELECT [System.Id], [System.Title], [System.WorkItemType], 
-                       [System.State], [Microsoft.VSTS.Scheduling.StoryPoints],
-                       [System.AreaPath], [System.AssignedTo], [Microsoft.VSTS.Common.TestedBy]
-                FROM WorkItems
-"""
-
+         "query": """
+              SELECT [System.Id], [System.Title], [System.WorkItemType], 
+                   [System.State], [Microsoft.VSTS.Scheduling.StoryPoints],
+                   [System.AreaPath], [System.AssignedTo], [Microsoft.VSTS.Common.TestedBy]
+            FROM WorkItems
+            WHERE [System.IterationPath] = @CurrentIteration
+              AND [System.WorkItemType] IN ('User Story', 'Bug')
+              AND [System.State] NOT IN ('Closed', 'Done', 'Removed')
+        """
         }
         
         # CHANGE: Optional AreaPath filter (advanced users only)
