@@ -473,6 +473,83 @@ st.markdown("""
 # AZURE DEVOPS INTEGRATION
 # ============================================================================
 
+# class AzureDevOpsClient:
+#     """Simple Azure DevOps API client for fetching work items"""
+    
+#     def __init__(self, organization: str, project: str, pat: str):
+#         self.organization = organization
+#         self.project = project
+#         self.base_url = f"https://dev.azure.com/{organization}/{project}/_apis"
+#         self.headers = {
+#             'Content-Type': 'application/json',
+#             'Authorization': f'Basic {base64.b64encode(f":{pat}".encode()).decode()}'
+#         }
+    
+#     def get_sprints(self) -> List[Dict]:
+#         """Fetch available sprints"""
+#         url = f"{self.base_url}/work/teamsettings/iterations?api-version=7.0"
+#         try:
+#             response = requests.get(url, headers=self.headers)
+#             response.raise_for_status()
+#             return response.json().get('value', [])
+#         except Exception as e:
+#             st.error(f"Failed to fetch sprints: {str(e)}")
+#             return []
+    
+#     def get_sprint_work_items(self, iteration_path: str) -> List[Dict]:
+#         """Fetch work items for a specific sprint with pagination support"""
+#         wiql_query = {
+#             "query": f"""
+#                 SELECT [System.Id], [System.Title], [System.WorkItemType], 
+#                        [System.State], [Microsoft.VSTS.Scheduling.StoryPoints],
+#                        [System.AreaPath], [System.AssignedTo]
+#                 FROM WorkItems
+#                 WHERE [System.IterationPath] = '{iteration_path}'
+#                   AND [System.WorkItemType] IN ('User Story', 'Bug')
+#                   AND [System.State] <> 'Removed'
+#                 ORDER BY [System.Id]
+#             """
+#         }
+        
+#         url = f"{self.base_url}/wit/wiql?api-version=7.0"
+#         try:
+#             response = requests.post(url, headers=self.headers, json=wiql_query)
+#             response.raise_for_status()
+#             work_item_refs = response.json().get('workItems', [])
+            
+#             if not work_item_refs:
+#                 return []
+            
+#             # Fetch work item details with pagination (max 200 IDs per request)
+#             all_work_items = []
+#             batch_size = 200
+            
+#             for i in range(0, len(work_item_refs), batch_size):
+#                 batch = work_item_refs[i:i + batch_size]
+#                 ids = ','.join([str(wi['id']) for wi in batch])
+#                 details_url = f"{self.base_url}/wit/workitems?ids={ids}&api-version=7.0"
+#                 details_response = requests.get(details_url, headers=self.headers)
+#                 details_response.raise_for_status()
+                
+#                 batch_items = details_response.json().get('value', [])
+#                 all_work_items.extend(batch_items)
+            
+#             return all_work_items
+            
+#         except requests.exceptions.HTTPError as e:
+#             if e.response.status_code == 401:
+#                 st.error("❌ Authentication failed. Please check your Personal Access Token.")
+#             elif e.response.status_code == 404:
+#                 st.error("❌ Project or organization not found. Please verify your configuration.")
+#             else:
+#                 st.error(f"❌ HTTP Error: {e.response.status_code} - {str(e)}")
+#             return []
+#         except requests.exceptions.RequestException as e:
+#             st.error(f"❌ Connection error: {str(e)}")
+#             return []
+#         except Exception as e:
+#             st.error(f"❌ Unexpected error: {str(e)}")
+#             return []
 class AzureDevOpsClient:
     """Simple Azure DevOps API client for fetching work items"""
     
@@ -496,20 +573,42 @@ class AzureDevOpsClient:
             st.error(f"Failed to fetch sprints: {str(e)}")
             return []
     
-    def get_sprint_work_items(self, iteration_path: str) -> List[Dict]:
-        """Fetch work items for a specific sprint with pagination support"""
+    # CHANGE: Removed get_sprint_work_items() that used hardcoded iteration_path
+    # NEW METHOD: Use @CurrentIteration macro instead
+    def get_current_iteration_work_items(self, area_path_filter: str = None, qa_team: str = None) -> List[Dict]:
+        """
+        Fetch work items for CURRENT ITERATION ONLY
+        
+        CHANGES:
+        1. Uses @CurrentIteration macro (Azure system macro)
+        2. Excludes Closed, Done, Removed states
+        3. Optional AreaPath filter (user-provided, not hardcoded)
+        4. Optional QA Team filter (client-side, after fetch)
+        
+        Args:
+            area_path_filter: Optional AreaPath to scope to team (user input)
+            qa_team: Optional comma-separated QA names to filter by
+        """
+        # Build WIQL query with @CurrentIteration macro
         wiql_query = {
-            "query": f"""
+            "query": """
                 SELECT [System.Id], [System.Title], [System.WorkItemType], 
                        [System.State], [Microsoft.VSTS.Scheduling.StoryPoints],
                        [System.AreaPath], [System.AssignedTo]
                 FROM WorkItems
-                WHERE [System.IterationPath] = '{iteration_path}'
+                WHERE [System.IterationPath] = @CurrentIteration
                   AND [System.WorkItemType] IN ('User Story', 'Bug')
-                  AND [System.State] <> 'Removed'
-                ORDER BY [System.Id]
+                  AND [System.State] NOT IN ('Closed', 'Done', 'Removed')
             """
         }
+        
+        # CHANGE: Optional AreaPath filter (advanced users only)
+        # If user provides area path, add it dynamically
+        if area_path_filter and area_path_filter.strip():
+            area_path_filter = area_path_filter.strip()
+            wiql_query["query"] += f"\n  AND [System.AreaPath] UNDER '{area_path_filter}'"
+        
+        wiql_query["query"] += "\nORDER BY [System.Id]"
         
         url = f"{self.base_url}/wit/wiql?api-version=7.0"
         try:
@@ -552,6 +651,48 @@ class AzureDevOpsClient:
             return []
 
 # ============================================================================
+# PROBLEM 3: QA TEAM FILTERING (Client-side)
+# ============================================================================
+
+def filter_work_items_by_qa_team(work_items_df: pd.DataFrame, qa_team_input: str) -> pd.DataFrame:
+    """
+    CHANGE: Filter work items to ONLY include items assigned to defined QA team
+    
+    Args:
+        work_items_df: DataFrame of work items from Azure
+        qa_team_input: Comma-separated QA names (e.g. "Sarah, Ahmed, Mike")
+    
+    Returns:
+        Filtered DataFrame with only QA-owned items
+        
+    RATIONALE:
+    - Developers, PMs, designers appear in AssignedTo
+    - Azure has no "QA Role" system field
+    - User explicitly defines their QA team
+    - Simple, secure, works everywhere
+    """
+    if not qa_team_input or not qa_team_input.strip():
+        # If no QA team defined, return all items (fallback to old behavior)
+        return work_items_df
+    
+    # Parse comma-separated QA names and strip whitespace
+    qa_names = [name.strip() for name in qa_team_input.split(',') if name.strip()]
+    
+    if not qa_names:
+        return work_items_df
+    
+    # Filter: Keep only items assigned to defined QA team
+    # Items assigned to others (devs, PMs) are excluded
+    filtered = work_items_df[work_items_df['Assigned QA'].isin(qa_names)]
+    
+    # Also keep unassigned items (QA will assign them)
+    unassigned = work_items_df[work_items_df['Assigned QA'] == 'Unassigned']
+    
+    result = pd.concat([filtered, unassigned], ignore_index=True)
+    return result.sort_values('Assigned QA')  # PROBLEM 5: Sort by Assigned QA
+
+
+# ============================================================================
 # CAPACITY CALCULATION LOGIC
 # ============================================================================
 
@@ -570,11 +711,48 @@ def calculate_qa_hours(story_points: int) -> int:
         return mapping.get(10, 9)
     return mapping.get(story_points, 0)
 
+# def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
+#     """Convert Azure DevOps work items to structured data"""
+#     data = []
+#     for wi in work_items:
+#         fields = wi.get('fields', {})
+#         # Handle missing story points gracefully
+#         story_points = fields.get('Microsoft.VSTS.Scheduling.StoryPoints')
+#         if story_points is None or story_points == '':
+#             story_points = 0
+#         else:
+#             try:
+#                 story_points = int(story_points)
+#             except (ValueError, TypeError):
+#                 story_points = 0
+        
+#         # Handle missing assigned to
+#         assigned_to = fields.get('System.AssignedTo', {})
+#         if isinstance(assigned_to, dict):
+#             assigned_qa = assigned_to.get('displayName', 'Unassigned')
+#         else:
+#             assigned_qa = 'Unassigned'
+        
+#         data.append({
+#             'ID': wi.get('id'),
+#             'Title': fields.get('System.Title', ''),
+#             'Type': fields.get('System.WorkItemType', ''),
+#             'State': fields.get('System.State', ''),
+#             'Story Points': story_points,
+#             'QA Hours': calculate_qa_hours(story_points),
+#             'Assigned QA': assigned_qa
+#         })
+    
+#     return pd.DataFrame(data)
 def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
-    """Convert Azure DevOps work items to structured data"""
+    """Convert Azure DevOps work items to structured data
+    
+    CHANGE: Better handling of missing/malformed data
+    """
     data = []
     for wi in work_items:
         fields = wi.get('fields', {})
+        
         # Handle missing story points gracefully
         story_points = fields.get('Microsoft.VSTS.Scheduling.StoryPoints')
         if story_points is None or story_points == '':
@@ -585,11 +763,15 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
             except (ValueError, TypeError):
                 story_points = 0
         
-        # Handle missing assigned to
+        # Handle missing assigned to (defensive)
         assigned_to = fields.get('System.AssignedTo', {})
         if isinstance(assigned_to, dict):
             assigned_qa = assigned_to.get('displayName', 'Unassigned')
         else:
+            assigned_qa = 'Unassigned'
+        
+        # CHANGE: Validate assigned_qa is not None or empty
+        if not assigned_qa or assigned_qa.strip() == '':
             assigned_qa = 'Unassigned'
         
         data.append({
@@ -1148,6 +1330,33 @@ def main():
             st.success(f"✅ Connected to: {st.session_state.get('azure_org')}/{st.session_state.get('azure_project')}")
         
         st.divider()
+
+        st.subheader("🎯 Data Filters (Optional)")
+        st.markdown("*Advanced options to scope data. Leave empty to fetch all.*")
+
+        # CHANGE: Optional AreaPath filter (Problem 2)
+        area_path_input = st.text_input(
+        "Area Path Filter (Advanced)",
+        value=st.session_state.get('area_path_filter', ''),
+        placeholder="e.g., MyCompany\\Engineering\\QA",
+        help="Leave empty to include all areas. Advanced users can scope to team area."
+        )
+        st.session_state.area_path_filter = area_path_input
+
+        # CHANGE: QA Team definition (Problem 3)
+        qa_team_input = st.text_input(
+        "QA Team Names (Comma-separated)",
+        value=st.session_state.get('qa_team_filter', ''),
+        placeholder="e.g., Sarah, Ahmed, Mike",
+        help="Define your QA team. Only work items assigned to these people will be included."
+        )
+        st.session_state.qa_team_filter = qa_team_input
+
+        if qa_team_input:
+            qa_list = [name.strip() for name in qa_team_input.split(',') if name.strip()]
+            st.caption(f"✓ Will filter to: {', '.join(qa_list)}")
+
+        st.divider()
         
         st.subheader("Sprint Assumptions")
         st.markdown("*These defaults can be edited*")
@@ -1374,37 +1583,83 @@ def main():
                     st.session_state.pat_cleared = True
                     st.info("PAT cleared from memory")
             
-            if sync_button:
-                with st.spinner("Fetching sprint data from Azure DevOps..."):
-                    try:
-                        client = AzureDevOpsClient(organization, project, pat)
-                        sprints = client.get_sprints()
+            # if sync_button:
+            #     with st.spinner("Fetching sprint data from Azure DevOps..."):
+            #         try:
+            #             client = AzureDevOpsClient(organization, project, pat)
+            #             sprints = client.get_sprints()
                         
-                        if sprints:
-                            sprint_names = [s['name'] for s in sprints]
-                            selected_sprint = st.selectbox("Select Sprint", sprint_names)
+            #             if sprints:
+            #                 sprint_names = [s['name'] for s in sprints]
+            #                 selected_sprint = st.selectbox("Select Sprint", sprint_names)
                             
-                            if selected_sprint:
-                                sprint = next((s for s in sprints if s['name'] == selected_sprint), None)
-                                if sprint:
-                                    work_items = client.get_sprint_work_items(sprint['path'])
-                                    if work_items:
-                                        st.session_state.work_items_df = process_work_items(work_items)
+            #                 if selected_sprint:
+            #                     sprint = next((s for s in sprints if s['name'] == selected_sprint), None)
+            #                     if sprint:
+            #                         work_items = client.get_sprint_work_items(sprint['path'])
+            #                         if work_items:
+            #                             st.session_state.work_items_df = process_work_items(work_items)
                                         
-                                        # Automatically update assigned hours
-                                        st.session_state.qa_members = update_qa_assigned_hours(
-                                            st.session_state.qa_members, 
-                                            st.session_state.work_items_df
-                                        )
+            #                             # Automatically update assigned hours
+            #                             st.session_state.qa_members = update_qa_assigned_hours(
+            #                                 st.session_state.qa_members, 
+            #                                 st.session_state.work_items_df
+            #                             )
                                         
-                                        st.success(f"✅ Synced {len(work_items)} work items and updated QA assignments")
-                                        st.rerun()
-                                    else:
-                                        st.warning("No work items found in this sprint")
-                        else:
-                            st.error("No sprints found. Please check your Azure DevOps configuration.")
-                    except Exception as e:
-                        st.error(f"Failed to sync: {str(e)}")
+            #                             st.success(f"✅ Synced {len(work_items)} work items and updated QA assignments")
+            #                             st.rerun()
+            #                         else:
+            #                             st.warning("No work items found in this sprint")
+            #             else:
+            #                 st.error("No sprints found. Please check your Azure DevOps configuration.")
+            #         except Exception as e:
+            #             st.error(f"Failed to sync: {str(e)}")
+            if sync_button:
+             with st.spinner("Fetching sprint data from Azure DevOps..."):
+                try:
+                    # CHANGE: Get optional AreaPath and QA Team filters from session state
+                    area_path_filter = st.session_state.get('area_path_filter', '')
+                    qa_team_filter = st.session_state.get('qa_team_filter', '')
+                    
+                    client = AzureDevOpsClient(organization, project, pat)
+                    
+                    # CHANGE: Call new method that uses @CurrentIteration macro
+                    work_items = client.get_current_iteration_work_items(
+                        area_path_filter=area_path_filter,
+                        qa_team=qa_team_filter
+                    )
+                    
+                    if work_items:
+                        # Process work items (existing function)
+                        st.session_state.work_items_df = process_work_items(work_items)
+                        
+                        # CHANGE (PROBLEM 5): Sort by Assigned QA for better readability
+                        st.session_state.work_items_df = st.session_state.work_items_df.sort_values(
+                            'Assigned QA', 
+                            ascending=True
+                        ).reset_index(drop=True)
+                        
+                        # PROBLEM 4 FIX: Recalculate assigned hours for each QA member
+                        # This is the CRITICAL step that was missing
+                        st.session_state.qa_members = update_qa_assigned_hours(
+                            st.session_state.qa_members, 
+                            st.session_state.work_items_df
+                        )
+                        
+                        # PROBLEM 3: Apply QA Team filter if defined
+                        if qa_team_filter:
+                            st.session_state.work_items_df = filter_work_items_by_qa_team(
+                                st.session_state.work_items_df,
+                                qa_team_filter
+                            )
+                        
+                        item_count = len(st.session_state.work_items_df)
+                        st.success(f"✅ Synced {item_count} work items and updated QA assignments")
+                        st.rerun()
+                    else:
+                        st.warning("No work items found in current iteration. Verify sprint is active.")
+                except Exception as e:
+                    st.error(f"Failed to sync: {str(e)}")
         else:
             st.info("👆 Enter your Azure DevOps credentials in the sidebar to sync sprint data")
         
