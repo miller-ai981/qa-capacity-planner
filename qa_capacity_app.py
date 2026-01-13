@@ -733,10 +733,17 @@ class AzureDevOpsClient:
                 batch = work_item_refs[i:i + batch_size]
                 ids = ",".join(str(wi["id"]) for wi in batch)
 
+                # details_url = (
+                #     f"{self.base_url}/wit/workitems"
+                #     f"?ids={ids}&api-version=7.0"
+                # )
                 details_url = (
                     f"{self.base_url}/wit/workitems"
-                    f"?ids={ids}&api-version=7.0"
+                    f"?ids={ids}"
+                    f"&$expand=fields"
+                    f"&api-version=7.0"
                 )
+
 
                 details_response = requests.get(details_url, headers=self.headers)
                 details_response.raise_for_status()
