@@ -572,82 +572,183 @@ class AzureDevOpsClient:
         except Exception as e:
             st.error(f"Failed to fetch sprints: {str(e)}")
             return []
-    
+        
+
+    def get_custom_fields(self) -> List[Dict]:
+        url = f"{self.base_url}/wit/fields?api-version=7.0"
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            fields = response.json().get('value', [])
+            
+            # Filter to show only custom fields and QA-related fields
+            qa_relevant_fields = [
+                f for f in fields 
+                if f.get('custom', False) or 'QA' in f.get('name', '') or 'Test' in f.get('name', '')
+            ]
+            
+            return qa_relevant_fields
+        except Exception as e:
+            st.error(f"Failed to fetch field definitions: {str(e)}")
+            return []
+
+    def get_current_iteration_path(self) -> str:
+        url = f"{self.base_url}/work/teamsettings/iterations?api-version=7.0"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+
+        iterations = response.json().get("value", [])
+        for iteration in iterations:
+            if iteration.get("attributes", {}).get("timeFrame") == "current":
+                return iteration.get("path")
+
+        raise Exception("No active (current) iteration found for this team.")
+
     # CHANGE: Removed get_sprint_work_items() that used hardcoded iteration_path
     # NEW METHOD: Use @CurrentIteration macro instead
-    def get_current_iteration_work_items(self, area_path_filter: str = None, qa_team: str = None) -> List[Dict]:
+    # def get_current_iteration_work_items(
+    #     self,
+    #     area_path_filter: str = None,
+    #     qa_team: str = None
+    # ) -> List[Dict]:
+
+
+    #     try:
+    #         # ✅ STEP 1: Resolve current iteration path explicitly
+    #         current_iteration_path = self.get_current_iteration_path()
+
+    #         # ✅ STEP 2: Build WIQL with explicit iteration path
+    #         wiql_query = {
+    #             "query": """
+    #                 SELECT
+    #                     [System.Id],
+    #                     [System.Title],
+    #                     [System.WorkItemType],
+    #                     [System.State],
+    #                     [System.AreaPath],
+    #                     [System.AssignedTo],
+    #                     [Microsoft.VSTS.Scheduling.StoryPoints]
+    #                 FROM WorkItems
+    #                 WHERE
+    #                     [System.IterationPath] = @CurrentIteration
+    #                     AND [System.WorkItemType] IN ('User Story', 'Bug')
+    #                     AND [System.State] NOT IN ('Closed', 'Done', 'Removed')
+    #             """
+    #         }
+
+
+
+    #         # ✅ Optional AreaPath filter
+    #         if area_path_filter and area_path_filter.strip():
+    #             wiql_query["query"] += (
+    #                 f"\nAND [System.AreaPath] UNDER '{area_path_filter.strip()}'"
+    #             )
+
+    #         wiql_query["query"] += "\nORDER BY [System.Id]"
+
+    #         # ✅ STEP 3: Execute WIQL
+    #         url = f"{self.base_url}/wit/wiql?api-version=7.0"
+    #         response = requests.post(url, headers=self.headers, json=wiql_query)
+    #         response.raise_for_status()
+
+    #         work_item_refs = response.json().get("workItems", [])
+    #         if not work_item_refs:
+    #             return []
+
+    #         # ✅ STEP 4: Fetch details in batches
+    #         all_work_items = []
+    #         batch_size = 200
+
+    #         for i in range(0, len(work_item_refs), batch_size):
+    #             batch = work_item_refs[i:i + batch_size]
+    #             ids = ",".join(str(wi["id"]) for wi in batch)
+
+    #             details_url = (
+    #                 f"{self.base_url}/wit/workitems"
+    #                 f"?ids={ids}&api-version=7.0"
+    #             )
+
+    #             details_response = requests.get(details_url, headers=self.headers)
+    #             details_response.raise_for_status()
+    #             all_work_items.extend(details_response.json().get("value", []))
+
+    #         return all_work_items
+
+    #     except requests.exceptions.HTTPError as e:
+    #         st.error(f"❌ HTTP Error: {e.response.status_code} - {e.response.text}")
+    #         return []
+    #     except Exception as e:
+    #         st.error(f"❌ Failed to fetch sprint work items: {str(e)}")
+    #         return []
+    def get_current_iteration_work_items(
+        self,
+        area_path_filter: str = None,
+        qa_team: str = None
+    ) -> List[Dict]:
         """
-        Fetch work items for CURRENT ITERATION ONLY
-        
-        CHANGES:
-        1. Uses @CurrentIteration macro (Azure system macro)
-        2. Excludes Closed, Done, Removed states
-        3. Optional AreaPath filter (user-provided, not hardcoded)
-        4. Optional QA Team filter (client-side, after fetch)
-        
-        Args:   
-            area_path_filter: Optional AreaPath to scope to team (user input)
-            qa_team: Optional comma-separated QA names to filter by
+        Fetch work items for CURRENT ITERATION ONLY.
+        Uses only standard fields to avoid WIQL errors.
         """
-        # Build WIQL query with @CurrentIteration macro
-        wiql_query = {
-         "query": """
-              SELECT [System.Id], [System.Title], [System.WorkItemType], 
-                   [System.State], [Microsoft.VSTS.Scheduling.StoryPoints],
-                   [System.AreaPath], [System.AssignedTo], [Microsoft.VSTS.Common.TestedBy]
-            FROM WorkItems
-            WHERE [System.IterationPath] = @CurrentIteration
-              AND [System.WorkItemType] IN ('User Story', 'Bug')
-              AND [System.State] NOT IN ('Closed', 'Done', 'Removed')
-        """
-        }
-        
-        # CHANGE: Optional AreaPath filter (advanced users only)
-        # If user provides area path, add it dynamically
-        if area_path_filter and area_path_filter.strip():
-            area_path_filter = area_path_filter.strip()
-            wiql_query["query"] += f"\n  AND [System.AreaPath] UNDER '{area_path_filter}'"
-        
-        wiql_query["query"] += "\nORDER BY [System.Id]"
-        
-        url = f"{self.base_url}/wit/wiql?api-version=7.0"
         try:
+            current_iteration_path = self.get_current_iteration_path()
+
+            wiql_query = {
+                "query": """
+                    SELECT
+                        [System.Id],
+                        [System.Title],
+                        [System.WorkItemType],
+                        [System.State],
+                        [System.AreaPath],
+                        [System.AssignedTo],
+                        [Microsoft.VSTS.Scheduling.StoryPoints]
+                    FROM WorkItems
+                    WHERE
+                        [System.IterationPath] = @CurrentIteration
+                        AND [System.WorkItemType] IN ('User Story', 'Bug')
+                        AND [System.State] NOT IN ('Closed', 'Done', 'Removed')
+                """
+            }
+
+            if area_path_filter and area_path_filter.strip():
+                wiql_query["query"] += (
+                    f"\nAND [System.AreaPath] UNDER '{area_path_filter.strip()}'"
+                )
+
+            wiql_query["query"] += "\nORDER BY [System.Id]"
+
+            url = f"{self.base_url}/wit/wiql?api-version=7.0"
             response = requests.post(url, headers=self.headers, json=wiql_query)
             response.raise_for_status()
-            work_item_refs = response.json().get('workItems', [])
-            
+
+            work_item_refs = response.json().get("workItems", [])
             if not work_item_refs:
                 return []
-            
-            # Fetch work item details with pagination (max 200 IDs per request)
+
+            # Fetch details in batches
             all_work_items = []
             batch_size = 200
-            
+
             for i in range(0, len(work_item_refs), batch_size):
                 batch = work_item_refs[i:i + batch_size]
-                ids = ','.join([str(wi['id']) for wi in batch])
-                details_url = f"{self.base_url}/wit/workitems?ids={ids}&api-version=7.0"
+                ids = ",".join(str(wi["id"]) for wi in batch)
+
+                details_url = (
+                    f"{self.base_url}/wit/workitems"
+                    f"?ids={ids}&api-version=7.0"
+                )
+
                 details_response = requests.get(details_url, headers=self.headers)
                 details_response.raise_for_status()
-                
-                batch_items = details_response.json().get('value', [])
-                all_work_items.extend(batch_items)
-            
+                all_work_items.extend(details_response.json().get("value", []))
+
             return all_work_items
-            
+
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 401:
-                st.error("❌ Authentication failed. Please check your Personal Access Token.")
-            elif e.response.status_code == 404:
-                st.error("❌ Project or organization not found. Please verify your configuration.")
-            else:
-                st.error(f"❌ HTTP Error: {e.response.status_code} - {str(e)}")
-            return []
-        except requests.exceptions.RequestException as e:
-            st.error(f"❌ Connection error: {str(e)}")
+            st.error(f"❌ HTTP Error: {e.response.status_code} - {e.response.text}")
             return []
         except Exception as e:
-            st.error(f"❌ Unexpected error: {str(e)}")
+            st.error(f"❌ Failed to fetch sprint work items: {str(e)}")
             return []
 
 # ============================================================================
@@ -690,8 +791,48 @@ class AzureDevOpsClient:
     
 #     result = pd.concat([filtered, unassigned], ignore_index=True)
 #     return result.sort_values('Assigned QA')  # PROBLEM 5: Sort by Assigned QA
+def extract_qa_owner(work_item: Dict, qa_field_reference: str) -> str:
+    """
+    Extract QA owner name from work item using provided field reference.
+    
+    Safely handles:
+    - Person object (dict with 'displayName')
+    - String value
+    - Missing/None value
+    - Empty value
+    - Invalid field reference
+    
+    Args:
+        work_item: Work item dict from Azure DevOps
+        qa_field_reference: Field reference name (e.g., 'Custom.QATestedBy')
+    
+    Returns:
+        QA owner name or 'Unassigned'
+    """
+    # No field configured
+    if not qa_field_reference or not qa_field_reference.strip():
+        return 'Unassigned'
+    
+    fields = work_item.get('fields', {})
+    qa_value = fields.get(qa_field_reference)
+    
+    # Field doesn't exist in this work item
+    if qa_value is None or qa_value == '':
+        return 'Unassigned'
+    
+    # Handle person object (dict with displayName)
+    if isinstance(qa_value, dict):
+        display_name = qa_value.get('displayName', '')
+        return display_name if display_name.strip() else 'Unassigned'
+    
+    # Handle string value
+    if isinstance(qa_value, str):
+        return qa_value.strip() if qa_value.strip() else 'Unassigned'
+    
+    # Fallback for other types
+    return 'Unassigned'
 def filter_work_items_by_qa_team(work_items_df: pd.DataFrame, qa_team_input: str) -> pd.DataFrame:
-    '''Filter work items to only include items tested by defined QA team'''
+    '''Filter work items to only include items with QA owner in defined team'''
     if not qa_team_input or not qa_team_input.strip():
         return work_items_df
     
@@ -700,13 +841,12 @@ def filter_work_items_by_qa_team(work_items_df: pd.DataFrame, qa_team_input: str
     if not qa_names:
         return work_items_df
     
-    # CHANGE: Filter using Tested By field instead of Assigned QA
-    filtered = work_items_df[work_items_df['Tested By'].isin(qa_names)]
-    unassigned = work_items_df[work_items_df['Tested By'] == 'Unassigned']
+    # Filter using 'QA Owner' column (universal)
+    filtered = work_items_df[work_items_df['QA Owner'].isin(qa_names)]
+    unassigned = work_items_df[work_items_df['QA Owner'] == 'Unassigned']
     
     result = pd.concat([filtered, unassigned], ignore_index=True)
-    # CHANGE: Sort by Tested By instead of Assigned QA
-    return result.sort_values('Tested By').reset_index(drop=True)
+    return result.sort_values('QA Owner').reset_index(drop=True)
 
 
 # ============================================================================
@@ -770,9 +910,55 @@ def calculate_qa_hours(story_points: int) -> int:
     
 #     return pd.DataFrame(data)
 
+# def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
+#     '''Convert Azure DevOps work items to structured data'''
+#     data = []
+#     for wi in work_items:
+#         fields = wi.get('fields', {})
+        
+#         story_points = fields.get('Microsoft.VSTS.Scheduling.StoryPoints')
+#         if story_points is None or story_points == '':
+#             story_points = 0
+#         else:
+#             try:
+#                 story_points = int(story_points)
+#             except (ValueError, TypeError):
+#                 story_points = 0
+        
+#         # CHANGE: Extract TestedBy (QA ownership field)
+#         tested_by = fields.get('Microsoft.VSTS.Common.TestedBy', {})
+#         if isinstance(tested_by, dict):
+#             qa_name = tested_by.get('displayName', 'Unassigned')
+#         else:
+#             qa_name = 'Unassigned'
+        
+#         if not qa_name or qa_name.strip() == '':
+#             qa_name = 'Unassigned'
+        
+#         # Keep Assigned To for reference (optional)
+#         assigned_to = fields.get('System.AssignedTo', {})
+#         if isinstance(assigned_to, dict):
+#             assigned_to_name = assigned_to.get('displayName', 'Unassigned')
+#         else:
+#             assigned_to_name = 'Unassigned'
+        
+#         data.append({
+#             'ID': wi.get('id'),
+#             'Title': fields.get('System.Title', ''),
+#             'Type': fields.get('System.WorkItemType', ''),
+#             'State': fields.get('System.State', ''),
+#             'Story Points': story_points,
+#             'QA Hours': calculate_qa_hours(story_points),
+#             'Tested By': qa_name,  # CHANGE: New column using TestedBy field
+#             'Assigned To': assigned_to_name  # Optional reference
+#         })
+    
+#     return pd.DataFrame(data)
 def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
     '''Convert Azure DevOps work items to structured data'''
     data = []
+    qa_field_reference = st.session_state.get('qa_field_reference', '')
+    
     for wi in work_items:
         fields = wi.get('fields', {})
         
@@ -785,15 +971,8 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
             except (ValueError, TypeError):
                 story_points = 0
         
-        # CHANGE: Extract TestedBy (QA ownership field)
-        tested_by = fields.get('Microsoft.VSTS.Common.TestedBy', {})
-        if isinstance(tested_by, dict):
-            qa_name = tested_by.get('displayName', 'Unassigned')
-        else:
-            qa_name = 'Unassigned'
-        
-        if not qa_name or qa_name.strip() == '':
-            qa_name = 'Unassigned'
+        # ✅ CHANGE 3: Use extract_qa_owner with user-provided field reference
+        qa_name = extract_qa_owner(wi, qa_field_reference)
         
         # Keep Assigned To for reference (optional)
         assigned_to = fields.get('System.AssignedTo', {})
@@ -809,8 +988,8 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
             'State': fields.get('System.State', ''),
             'Story Points': story_points,
             'QA Hours': calculate_qa_hours(story_points),
-            'Tested By': qa_name,  # CHANGE: New column using TestedBy field
-            'Assigned To': assigned_to_name  # Optional reference
+            'QA Owner': qa_name,  # ✅ Universal column name
+            'Assigned To': assigned_to_name
         })
     
     return pd.DataFrame(data)
@@ -830,8 +1009,7 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
 
 def update_qa_assigned_hours(qa_members: List[Dict], work_items_df: pd.DataFrame) -> List[Dict]:
     '''Automatically update assigned hours for each QA member based on work items'''
-    # CHANGE: Group by Tested By field instead of Assigned QA
-    assigned_hours = work_items_df[work_items_df['Tested By'] != 'Unassigned'].groupby('Tested By')['QA Hours'].sum().to_dict()
+    assigned_hours = work_items_df[work_items_df['QA Owner'] != 'Unassigned'].groupby('QA Owner')['QA Hours'].sum().to_dict()
     
     for qa in qa_members:
         qa['assigned_hours'] = assigned_hours.get(qa['name'], 0)
@@ -1387,13 +1565,125 @@ def main():
             "QA Team Names (Comma-separated)",
             value=st.session_state.get('qa_team_filter', ''),
             placeholder="e.g., Sarah, Ahmed, Mike",
-            help="Define your QA team. Only items where Tested By = these names will be included."  # CHANGE
+            help="Define your QA team. Only items where QA Owner = these names will be included."  # CHANGE
         )
         st.session_state.qa_team_filter = qa_team_input
 
         if qa_team_input:
             qa_list = [name.strip() for name in qa_team_input.split(',') if name.strip()]
             st.caption(f"✓ Will filter to: {', '.join(qa_list)}")
+
+        st.divider()
+
+        st.subheader("🎯 QA Field Configuration")
+        st.markdown("*Select which Azure DevOps field contains QA tester names*")
+        
+        # ✅ Step 1: Check if we can fetch fields
+        if st.session_state.get('azure_connected', False):
+            try:
+                organization = st.session_state.get('azure_org', '')
+                project = st.session_state.get('azure_project', '')
+                pat = st.session_state.get('azure_pat', '')
+                
+                # Fetch fields from Azure
+                client = AzureDevOpsClient(organization, project, pat)
+                
+                # Check if we already have fields cached
+                if 'azure_fields_cache' not in st.session_state:
+                    with st.spinner("🔄 Detecting custom fields from Azure DevOps..."):
+                        all_fields = client.get_custom_fields()
+                        if all_fields:
+                            st.session_state.azure_fields_cache = all_fields
+                            st.success(f"✅ Found {len(all_fields)} custom/QA-related fields")
+                        else:
+                            st.warning("⚠️ No custom fields detected. Manual entry required.")
+                            st.session_state.azure_fields_cache = []
+                
+                # ✅ Step 2: Build dropdown options
+                cached_fields = st.session_state.get('azure_fields_cache', [])
+                
+                if cached_fields:
+                    # Sort by name for better UX
+                    field_options = sorted([
+                        {
+                            'name': f['name'],
+                            'reference': f['referenceName'],
+                            'custom': f.get('custom', False)
+                        }
+                        for f in cached_fields
+                    ], key=lambda x: x['name'])
+                    
+                    # Create display labels
+                    field_labels = [
+                        f"{f['name']} ({f['reference']})" + (" [Custom]" if f['custom'] else " [System]")
+                        for f in field_options
+                    ]
+                    
+                    # ✅ Step 3: Dropdown selector
+                    selected_label = st.selectbox(
+                        "Select QA Field",
+                        options=[''] + field_labels,
+                        index=0,
+                        help="Choose the field that contains QA tester names. "
+                             "Look for fields like 'QA Owner', 'Tester', etc."
+                    )
+                    
+                    if selected_label:
+                        # Extract reference name from selection
+                        selected_field = next(
+                            (f for f, label in zip(field_options, field_labels) if label == selected_label),
+                            None
+                        )
+                        if selected_field:
+                            qa_field_ref = selected_field['reference']
+                            st.session_state.qa_field_reference = qa_field_ref
+                            
+                            st.success(f"✓ Selected: {selected_field['name']}")
+                            st.caption(f"Reference: `{qa_field_ref}`")
+                    else:
+                        st.info("👆 Select a field above or enter manually below")
+                
+                # ✅ Step 4: Manual entry fallback
+                st.markdown("---")
+                st.markdown("**Or enter manually:**")
+                manual_field = st.text_input(
+                    "Custom Field Reference (if not in list above)",
+                    value=st.session_state.get('qa_field_reference', ''),
+                    placeholder="e.g., Custom.QATestedBy",
+                    help="Enter the exact field reference name if it's not in the dropdown above."
+                )
+                
+                if manual_field and manual_field.strip():
+                    st.session_state.qa_field_reference = manual_field.strip()
+                    st.info(f"✓ Using manual field: {manual_field.strip()}")
+                
+                # ✅ Step 5: Show current status
+                current_field = st.session_state.get('qa_field_reference', '')
+                if current_field:
+                    st.markdown(f"**Currently configured:** `{current_field}`")
+                else:
+                    st.warning("⚠️ No QA field configured - QA owners will show as 'Unassigned'")
+                    
+            except Exception as e:
+                st.error(f"⚠️ Could not auto-detect fields: {str(e)}")
+                st.markdown("**Enter field reference manually:**")
+                manual_field = st.text_input(
+                    "Custom Field Reference",
+                    value=st.session_state.get('qa_field_reference', ''),
+                    placeholder="e.g., Custom.QATestedBy"
+                )
+                if manual_field:
+                    st.session_state.qa_field_reference = manual_field.strip()
+        
+        else:
+            st.warning("⚠️ Connect to Azure DevOps first to auto-detect fields")
+            manual_field = st.text_input(
+                "Custom Field Reference (Manual Entry)",
+                value=st.session_state.get('qa_field_reference', ''),
+                placeholder="e.g., Custom.QATestedBy"
+            )
+            if manual_field:
+                st.session_state.qa_field_reference = manual_field.strip()
 
         st.divider()
         
@@ -1458,9 +1748,10 @@ def main():
             'State': ['New', 'In Progress', 'New', 'New', 'In Progress'],
             'Story Points': [5, 8, 3, 2, 5],
             'QA Hours': [7, 10, 5, 3, 7],
-            'Tested By': ['Sarah', 'Sarah', 'Ahmed', 'Unassigned', 'Ahmed'],  # ✅ CHANGED
-            'Assigned To': ['Dev1', 'Dev2', 'Dev3', 'Dev4', 'Dev5']  # ✅ ADDED (optional reference)
+            'QA Owner': ['Sarah', 'Sarah', 'Ahmed', 'Unassigned', 'Ahmed'],
+            'Assigned To': ['Dev1', 'Dev2', 'Dev3', 'Dev4', 'Dev5']
         })
+
     
     if 'qa_members' not in st.session_state:
         st.session_state.qa_members = [
@@ -1483,7 +1774,7 @@ def main():
         work_items_df = st.session_state.work_items_df
         
         # Calculate unassigned hours
-        unassigned_items = work_items_df[work_items_df['Tested By'] == 'Unassigned']  # CHANGE
+        unassigned_items = work_items_df[work_items_df['QA Owner'] == 'Unassigned']  # ✅ CORRECT
         unassigned_hours = unassigned_items['QA Hours'].sum()
 
         
@@ -1512,8 +1803,8 @@ def main():
         
         # Show unassigned warning if exists
         if len(unassigned_items) > 0:
-            st.warning(f"⚠️ **{len(unassigned_items)} work items ({unassigned_hours} hours) have no QA owner** - Assign via 'Tested By' field in Azure DevOps")
-        
+            st.warning(f"⚠️ **{len(unassigned_items)} work items ({unassigned_hours} hours) have no QA owner** - Configure QA field in sidebar")
+         
         st.divider()
         
         # Main capacity table (CENTERPIECE)
@@ -1687,7 +1978,7 @@ def main():
                         # ).reset_index(drop=True)
 
                         st.session_state.work_items_df = st.session_state.work_items_df.sort_values(
-                            'Tested By',  # CHANGE: Sort by Tested By
+                            'QA Owner',  # CHANGE: Sort by Tested By
                             ascending=True
                         ).reset_index(drop=True)
                         
@@ -1722,19 +2013,19 @@ def main():
         with col2:
             st.metric("Bugs", len(work_items_df[work_items_df['Type'] == 'Bug']))
         with col3:
-            unassigned_count = len(work_items_df[work_items_df['Tested By'] == 'Unassigned'])  # CHANGE
+            unassigned_count = len(work_items_df[work_items_df['QA Owner'] == 'Unassigned'])  # CHANGE
             st.metric("Unassigned (No QA Owner)", unassigned_count,  # CHANGE label
                      delta="Needs QA assignment" if unassigned_count > 0 else None,  # CHANGE text
                      delta_color="inverse" if unassigned_count > 0 else "off")
         with col4:
-            unassigned_hours = work_items_df[work_items_df['Tested By'] == 'Unassigned']['QA Hours'].sum()  # CHANGE
+            unassigned_hours = work_items_df[work_items_df['QA Owner'] == 'Unassigned']['QA Hours'].sum()  # CHANGE
             st.metric("Unassigned Hours", f"{unassigned_hours} hrs")
         
         st.divider()
         
         # Highlight unassigned items
         if unassigned_count > 0:
-            st.warning(f"⚠️ {unassigned_count} items have no QA owner (Tested By field is empty) - Assign in Azure DevOps")
+            st.warning(f"⚠️ {unassigned_count} items have no QA owner (QA Owner field is empty) - Assign in Azure DevOps")
 
         
         # Work items table - ensure text is visible
