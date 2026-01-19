@@ -3,7 +3,7 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.graph_objects as go 
 from datetime import datetime
 import requests
 import base64
@@ -35,70 +35,6 @@ st.set_page_config(
 # ============================================================================
 # STYLING
 # ============================================================================
-
-# st.markdown("""
-# <style>
-#     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
-    
-#     * { font-family: 'Inter', sans-serif; }
-    
-#     .stApp { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); }
-#     .main { background: transparent; }
-#     header { background: transparent !important; }
-#     [data-testid="stHeader"] { background: transparent !important; display: none !important; }
-#     #MainMenu { visibility: hidden; }
-#     footer { visibility: hidden; }
-    
-#     div[data-testid="stMetricValue"] {
-#         font-size: 36px; font-weight: 800;
-#         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-#         -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-#     }
-#     div[data-testid="stMetricLabel"] { color: rgba(255, 255, 255, 0.9); font-weight: 600; }
-#     div[data-testid="stMetricDelta"] { color: #48bb78; font-weight: 600; }
-    
-#     h1, h2, h3 { color: rgba(255, 255, 255, 0.95); font-weight: 700; }
-#     h1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-#          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-#          font-size: 48px; margin-bottom: 10px; }
-    
-#     .stButton>button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important;
-#                       border-radius: 12px; padding: 12px 32px; font-weight: 700; border: none; }
-#     .stButton>button:hover { transform: translateY(-2px); }
-    
-#     .stDownloadButton>button { background: rgba(255, 255, 255, 0.1) !important;
-#                                border: 1px solid rgba(255, 255, 255, 0.2) !important;
-#                                color: white !important; border-radius: 12px; padding: 12px 24px; }
-    
-#     [data-testid="stSidebar"] { background: linear-gradient(180deg, rgba(15, 12, 41, 0.95) 0%, rgba(48, 43, 99, 0.95) 100%); }
-#     [data-testid="stSidebar"] h2 { color: white; font-weight: 700; }
-    
-#     .stTextInput>div>div>input, .stNumberInput>div>div>input {
-#         background: rgba(240, 242, 246, 0.95) !important; border: 1px solid rgba(200, 200, 220, 0.5) !important;
-#         color: #1a202c !important; padding: 12px !important;
-#     }
-    
-#     .stTextInput>label, .stNumberInput>label { color: rgba(255, 255, 255, 0.95) !important; font-weight: 600 !important; }
-    
-#     .stTabs [data-baseweb="tab-list"] { gap: 8px; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 15px; }
-#     .stTabs [aria-selected="true"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-    
-#     .stDataFrame th { color: white !important; background-color: rgba(102, 126, 234, 0.5) !important; }
-#     .stDataFrame td { color: #1a202c !important; background-color: rgba(255, 255, 255, 0.95) !important; }
-#     [data-testid="stDataFrame"] * { color: #1a202c !important; }
-#     [data-testid="stDataFrame"] thead * { color: white !important; }
-    
-#     .stMarkdown p, .stAlert p { color: rgba(255, 255, 255, 0.95) !important; }
-#     label { color: rgba(255, 255, 255, 0.95) !important; }
-    
-#     .stAlert { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 12px; }
-    
-#     .js-plotly-plot { background: rgba(255, 255, 255, 0.05) !important; border-radius: 15px; padding: 10px; }
-    
-#     .info-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; color: white; }
-# </style>
-# """, unsafe_allow_html=True)
-
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
@@ -550,7 +486,7 @@ class AzureDevOpsClient:
             wiql_query = {
                 "query": """
                     SELECT [System.Id], [System.Title], [System.WorkItemType], [System.State],
-                           [System.AreaPath], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints]
+                           [System.AreaPath], [System.AssignedTo],  [Custom.QAStoryPoints]
                     FROM WorkItems
                     WHERE [System.IterationPath] = @CurrentIteration
                       AND [System.WorkItemType] IN ('User Story', 'Bug')
@@ -628,7 +564,7 @@ def process_work_items(work_items: List[Dict]) -> pd.DataFrame:
     qa_field_reference = st.session_state.get('qa_field_reference', '')
     for wi in work_items:
         fields = wi.get('fields', {})
-        story_points = fields.get('Microsoft.VSTS.Scheduling.StoryPoints')
+        story_points = fields.get('Custom.QAStoryPoints')
         if story_points is None or story_points == '':
             story_points = 0
         else:
@@ -933,15 +869,15 @@ def main():
         st.info(f"**Capacity per QA:** {total_per_qa} hours per sprint")
         
         st.divider()
-        st.subheader("📋 Story Points → QA Hours")
-        mapping_df = pd.DataFrame(list(QA_HOURS_MAPPING.items()), columns=['Story Points', 'QA Hours'])
+        st.subheader("QA Story Points → QA Hours")
+        mapping_df = pd.DataFrame(list(QA_HOURS_MAPPING.items()), columns=['QA Story Points', 'QA Hours'])
         edited_mapping = st.data_editor(mapping_df, hide_index=True, use_container_width=True, num_rows="dynamic")
         
         if edited_mapping is not None and len(edited_mapping) > 0:
             new_mapping = {}
             for _, row in edited_mapping.iterrows():
                 try:
-                    sp = int(row['Story Points'])
+                    sp = int(row['QA Story Points'])
                     hours = int(row['QA Hours'])
                     if sp > 0 and hours > 0:
                         new_mapping[sp] = hours
@@ -958,7 +894,7 @@ def main():
             'Title': ['User login flow', 'API integration', 'UI redesign', 'Bug fix - crash', 'Data export'],
             'Type': ['User Story', 'User Story', 'User Story', 'Bug', 'User Story'],
             'State': ['New', 'In Progress', 'New', 'New', 'In Progress'],
-            'Story Points': [5, 8, 3, 2, 5],
+            'QA Story Points': [5, 8, 3, 2, 5],
             'QA Hours': [7, 10, 5, 3, 7],
             'QA Owner': ['Sarah', 'Sarah', 'Ahmed', 'Unassigned', 'Ahmed'],
             'Assigned To': ['Dev1', 'Dev2', 'Dev3', 'Dev4', 'Dev5']
